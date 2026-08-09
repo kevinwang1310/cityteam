@@ -1,0 +1,16 @@
+{
+  "name": "CityTeam Run Club",
+  "short_name": "Run Club",
+  "description": "Private CityTeam Run Club attendance and reporting app.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#0b2a42",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
