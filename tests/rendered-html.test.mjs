@@ -34,8 +34,12 @@ test("server-renders the CityTeam Run Club app", async () => {
   assert.match(html, /<title>CityTeam Run Club<\/title>/i);
   assert.match(html, /CityTeam/);
   assert.match(html, /Run Club/);
+  assert.match(html, /cityteamlogo\.svg/);
   assert.match(html, /Check In/);
-  assert.match(html, /Reports/);
+  assert.match(html, /Runs/);
+  assert.match(html, /Photo Album/);
+  assert.match(html, /https:\/\/photos\.app\.goo\.gl\/qfBZysZRK31yaNKC6/);
+  assert.doesNotMatch(html, /Reports/);
   assert.match(html, /manifest\.webmanifest/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
@@ -50,7 +54,10 @@ test("keeps production app files free of starter preview wiring", async () => {
   ]);
 
   assert.match(page, /CityTeam/);
-  assert.match(page, /NEXT_PUBLIC_SHEETS_API_URL/);
+  assert.match(page, /\/cityteamlogo\.svg/);
+  assert.match(page, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(page, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(manifest, /CityTeam Run Club/);
   assert.match(css, /--navy:\s*#0b2a42/);
