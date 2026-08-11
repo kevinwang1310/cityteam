@@ -628,6 +628,7 @@ export default function Home() {
   const [newRunnerOpen, setNewRunnerOpen] = useState(false);
   const [newRunner, setNewRunner] = useState({ firstName: "", lastName: "", notes: "" });
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const adminName = state.admins[0] ?? configuredAdmins[0] ?? "Admin";
 
   useEffect(() => {
@@ -688,6 +689,11 @@ export default function Home() {
   }, [query, state.runners, statusFilter, personTypeFilter, state.attendance, todayRunId]);
 
   const selectedRunner = state.runners.find((runner) => runner.id === selectedRunnerId) ?? state.runners[0];
+
+  function openRunnerProfile(runnerId: string) {
+    setSelectedRunnerId(runnerId);
+    setMobileProfileOpen(true);
+  }
 
   const checkinSummary = useMemo(() => {
     const firstTimers = todayAttendance.filter((item) => countAttendance(state, item.runnerId) === 1).length;
@@ -806,6 +812,7 @@ export default function Home() {
     };
     setState((current) => ({ ...current, runners: [runner, ...current.runners] }));
     setSelectedRunnerId(runner.id);
+    setMobileProfileOpen(true);
     setNewRunner({ firstName: "", lastName: "", notes: "" });
     setNewRunnerOpen(false);
 
@@ -969,7 +976,10 @@ export default function Home() {
             <button
               key={item.id}
               className={section === item.id ? "nav-item active" : "nav-item"}
-              onClick={() => setSection(item.id)}
+              onClick={() => {
+                setSection(item.id);
+                setMobileProfileOpen(false);
+              }}
             >
               {item.label}
             </button>
@@ -1075,7 +1085,7 @@ export default function Home() {
               <div className="runner-list">
                 {filteredRunners.map((runner) => (
                   <article key={runner.id} className={isCheckedIn(runner.id) ? "runner-row checked" : "runner-row"}>
-                    <button className="runner-main" onClick={() => setSelectedRunnerId(runner.id)}>
+                    <button className="runner-main" onClick={() => openRunnerProfile(runner.id)}>
                       <Avatar runner={runner} />
                       <span>
                         <strong>{runnerName(runner)}</strong>
@@ -1105,11 +1115,13 @@ export default function Home() {
               state={state}
               onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
               onSaveProfile={saveRunnerProfile}
+              isMobileOpen={mobileProfileOpen}
+              onCloseMobile={() => setMobileProfileOpen(false)}
             />
           </div>
         )}
 
-        {section === "people" && <PeopleSection state={state} selectRunner={(id) => { setSelectedRunnerId(id); setSection("checkin"); }} />}
+        {section === "people" && <PeopleSection state={state} selectRunner={(id) => { openRunnerProfile(id); setSection("checkin"); }} />}
         {section === "runs" && <RunsSection state={state} onToggleAttendance={updateRunAttendance} onDeleteRun={deleteRun} />}
         {section === "gear" && <GearSection state={state} />}
         {section === "settings" && <SettingsSection />}
@@ -1138,11 +1150,15 @@ function ProfileCard({
   state,
   onEditPhoto,
   onSaveProfile,
+  isMobileOpen,
+  onCloseMobile,
 }: {
   runner?: Runner;
   state: AppState;
   onEditPhoto: (runner: Runner) => void;
   onSaveProfile: (runnerId: string, updates: Partial<Runner>) => Promise<void>;
+  isMobileOpen: boolean;
+  onCloseMobile: () => void;
 }) {
   const panelRef = useRef<HTMLElement | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -1200,6 +1216,7 @@ function ProfileCard({
     runner?.tshirtSize,
     runner?.oldTshirtSize,
     runner?.shirtReceivedDate,
+    isMobileOpen,
   ]);
 
   if (!runner) return null;
@@ -1219,7 +1236,14 @@ function ProfileCard({
     : 0;
 
   return (
-    <aside className="profile-panel" ref={panelRef}>
+    <aside className={isMobileOpen ? "profile-panel mobile-profile-open" : "profile-panel"} ref={panelRef}>
+      <div className="mobile-profile-bar">
+        <button className="text-action" onClick={onCloseMobile}>
+          Back to list
+        </button>
+        <strong>{runnerName(runner)}</strong>
+      </div>
+
       <div className="profile-photo-card">
         {runner.photoUrl ? (
           <img className="profile-photo-large" src={runner.photoUrl} alt={`${runnerName(runner)} profile`} />

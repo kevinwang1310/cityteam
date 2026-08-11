@@ -422,6 +422,10 @@ a.nav-item {
   padding: 18px;
 }
 
+.mobile-profile-bar {
+  display: none;
+}
+
 .profile-photo-card {
   display: grid;
   gap: 10px;
@@ -1318,6 +1322,50 @@ code {
   .profile-stats,
   .gear-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-panel {
+    display: none;
+  }
+
+  .profile-panel.mobile-profile-open {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: calc(12px + env(safe-area-inset-top)) 16px calc(22px + env(safe-area-inset-bottom));
+    background: var(--background);
+  }
+
+  .mobile-profile-bar {
+    position: sticky;
+    top: calc(-12px - env(safe-area-inset-top));
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: calc(-12px - env(safe-area-inset-top)) -16px 14px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(246, 244, 239, 0.96);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-profile-bar strong {
+    min-width: 0;
+    color: var(--navy);
+    overflow: hidden;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .photo-modal-backdrop {
