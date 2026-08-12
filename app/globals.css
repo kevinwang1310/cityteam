@@ -1307,7 +1307,7 @@ a.nav-item {
 .volunteer-rsvp strong,
 .volunteer-rsvp small {
   display: block;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .upcoming-run-head strong {
@@ -1519,10 +1519,23 @@ code {
   .delete-confirmation,
   .delete-confirmation div,
   .danger-actions,
-  .upcoming-run-head,
   .upcoming-run-actions,
   .run-row-actions {
     display: grid;
+  }
+
+  .upcoming-run-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .upcoming-run-head .summary-pills {
+    justify-content: flex-start;
+  }
+
+  .upcoming-run-head .text-action {
+    width: 100%;
   }
 
   .present-toggle {
