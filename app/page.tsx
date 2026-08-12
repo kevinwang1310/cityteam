@@ -442,6 +442,16 @@ function lastSeen(state: AppState, runnerId: string) {
   return runDates.length ? formatShortDate(runDates[runDates.length - 1]) : "Never";
 }
 
+function firstJoinedDate(state: AppState, runnerId: string) {
+  const runDates = state.attendance
+    .filter((item) => item.runnerId === runnerId && item.attended)
+    .map((item) => state.runs.find((run) => run.id === item.runId)?.date)
+    .filter(Boolean)
+    .sort() as string[];
+
+  return runDates[0];
+}
+
 function hasSupabaseConfig() {
   return Boolean(SUPABASE_URL && SUPABASE_KEY);
 }
@@ -1495,7 +1505,6 @@ function ProfileCard({
     shoeSize: "",
     tshirtSize: "",
     shirtReceivedDate: "",
-    dateFirstJoined: "",
     demoShoesReceivedDate: "",
     newShoesReceivedDate: "",
   });
@@ -1513,7 +1522,6 @@ function ProfileCard({
       shoeSize: runner?.shoeSize ?? "",
       tshirtSize: runner?.tshirtSize ?? "",
       shirtReceivedDate: runner?.shirtReceivedDate ?? "",
-      dateFirstJoined: runner?.dateFirstJoined ?? "",
       demoShoesReceivedDate: runner?.demoShoesReceivedDate ?? "",
       newShoesReceivedDate: runner?.newShoesReceivedDate ?? "",
     });
@@ -1532,7 +1540,6 @@ function ProfileCard({
     runner?.shoeSize,
     runner?.tshirtSize,
     runner?.shirtReceivedDate,
-    runner?.dateFirstJoined,
     runner?.demoShoesReceivedDate,
     runner?.newShoesReceivedDate,
     isMobileOpen,
@@ -1553,6 +1560,7 @@ function ProfileCard({
   const recentAttendanceRate = recentRunTrend.length
     ? Math.round((recentAttendances / recentRunTrend.length) * 100)
     : 0;
+  const automaticFirstJoinedDate = firstJoinedDate(state, runner.id) ?? runner.dateFirstJoined;
 
   return (
     <aside className={isMobileOpen ? "profile-panel mobile-profile-open" : "profile-panel"} ref={panelRef}>
@@ -1588,7 +1596,7 @@ function ProfileCard({
       <div className="profile-stats">
         <span><strong>{countAttendance(state, runner.id)}</strong> Runs</span>
         {runner.personType === "cityteam_client" ? (
-          <span><strong>{runner.dateFirstJoined ? formatShortDate(runner.dateFirstJoined) : "Not set"}</strong> First joined</span>
+          <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
         ) : (
           <span><strong>{countVolunteered(state, runner.id)}</strong> Volunteer</span>
         )}
@@ -1638,16 +1646,6 @@ function ProfileCard({
                 ))}
               </select>
             </label>
-            {profileDraft.personType === "cityteam_client" && (
-              <label>
-                <span>Date first joined</span>
-                <input
-                  type="date"
-                  value={profileDraft.dateFirstJoined}
-                  onChange={(event) => setProfileDraft((current) => ({ ...current, dateFirstJoined: event.target.value }))}
-                />
-              </label>
-            )}
             <div className="profile-editor-section">
               <span>Shoes</span>
             </div>
@@ -1726,7 +1724,6 @@ function ProfileCard({
                     shoeSize: runner.shoeSize ?? "",
                     tshirtSize: runner.tshirtSize ?? "",
                     shirtReceivedDate: runner.shirtReceivedDate ?? "",
-                    dateFirstJoined: runner.dateFirstJoined ?? "",
                     demoShoesReceivedDate: runner.demoShoesReceivedDate ?? "",
                     newShoesReceivedDate: runner.newShoesReceivedDate ?? "",
                   });
@@ -1752,7 +1749,7 @@ function ProfileCard({
                       shoeSize: profileDraft.shoeSize,
                       tshirtSize: profileDraft.tshirtSize,
                       shirtReceivedDate: profileDraft.shirtReceivedDate,
-                      dateFirstJoined: profileDraft.personType === "cityteam_client" ? profileDraft.dateFirstJoined : "",
+                      dateFirstJoined: profileDraft.personType === "cityteam_client" ? automaticFirstJoinedDate ?? "" : "",
                       demoShoesReceivedDate: profileDraft.demoShoesReceivedDate,
                       newShoesReceivedDate: profileDraft.newShoesReceivedDate,
                     });
