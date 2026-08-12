@@ -545,6 +545,17 @@ async function deleteRunRecords(runId: string) {
   });
 }
 
+async function deleteRunnerRecords(runnerId: string) {
+  await supabaseRequest<void>(`attendance?runner_id=eq.${encodeURIComponent(runnerId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  });
+  await supabaseRequest<void>(`runners?id=eq.${encodeURIComponent(runnerId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  });
+}
+
 async function insertRunner(runner: Runner) {
   return supabaseRequest<SupabaseRunnerRow[]>("runners", {
     method: "POST",
@@ -796,6 +807,32 @@ export default function Home() {
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Run deleted locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function deleteRunner(runnerId: string) {
+    const runner = state.runners.find((candidate) => candidate.id === runnerId);
+    if (!runner) return;
+    const remainingRunners = state.runners.filter((candidate) => candidate.id !== runnerId);
+
+    setState((current) => ({
+      ...current,
+      runners: current.runners.filter((candidate) => candidate.id !== runnerId),
+      attendance: current.attendance.filter((item) => item.runnerId !== runnerId),
+    }));
+    setSelectedRunnerId(remainingRunners[0]?.id ?? "");
+    setMobileProfileOpen(false);
+    setPhotoEditorRunner((current) => (current?.id === runnerId ? null : current));
+
+    if (hasSupabaseConfig()) {
+      try {
+        await deleteRunnerRecords(runnerId);
+        setConnectionState("connected");
+        setMessage(`${runnerName(runner)} deleted from Supabase.`);
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Profile deleted locally, but Supabase did not update.");
       }
     }
   }
@@ -1115,6 +1152,7 @@ export default function Home() {
               state={state}
               onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
               onSaveProfile={saveRunnerProfile}
+              onDeleteProfile={deleteRunner}
               isMobileOpen={mobileProfileOpen}
               onCloseMobile={() => setMobileProfileOpen(false)}
             />
@@ -1150,6 +1188,7 @@ function ProfileCard({
   state,
   onEditPhoto,
   onSaveProfile,
+  onDeleteProfile,
   isMobileOpen,
   onCloseMobile,
 }: {
@@ -1157,11 +1196,14 @@ function ProfileCard({
   state: AppState;
   onEditPhoto: (runner: Runner) => void;
   onSaveProfile: (runnerId: string, updates: Partial<Runner>) => Promise<void>;
+  onDeleteProfile: (runnerId: string) => Promise<void>;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
   const panelRef = useRef<HTMLElement | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({
     firstName: "",
     lastName: "",
@@ -1198,6 +1240,8 @@ function ProfileCard({
       shirtReceivedDate: runner?.shirtReceivedDate ?? "",
     });
     setIsEditingProfile(false);
+    setIsConfirmingDelete(false);
+    setIsDeletingProfile(false);
     setIsSavingProfile(false);
     setProfileError("");
   }, [
@@ -1500,6 +1544,44 @@ function ProfileCard({
           <span><i className="legend-dot absent" /> Absent</span>
           <strong>{recentAttendanceRate}% recent rate</strong>
         </div>
+      </section>
+
+      <section className="danger-zone">
+        <h4>Delete Profile</h4>
+        {isConfirmingDelete ? (
+          <>
+            <p>
+              Delete {runnerName(runner)}? This removes their profile and attendance history.
+            </p>
+            <div className="danger-actions">
+              <button
+                className="secondary-action"
+                onClick={() => setIsConfirmingDelete(false)}
+                disabled={isDeletingProfile}
+              >
+                Cancel
+              </button>
+              <button
+                className="danger-action solid"
+                disabled={isDeletingProfile}
+                onClick={async () => {
+                  setIsDeletingProfile(true);
+                  try {
+                    await onDeleteProfile(runner.id);
+                  } finally {
+                    setIsDeletingProfile(false);
+                  }
+                }}
+              >
+                {isDeletingProfile ? "Deleting..." : "Delete Profile"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <button className="danger-action" onClick={() => setIsConfirmingDelete(true)}>
+            Delete Profile
+          </button>
+        )}
       </section>
     </aside>
   );

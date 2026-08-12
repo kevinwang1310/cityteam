@@ -595,6 +595,30 @@ a.nav-item {
   background: var(--red);
 }
 
+.danger-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.danger-zone {
+  color: var(--red);
+}
+
+.danger-zone h4 {
+  color: var(--red);
+}
+
+.danger-zone p {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.danger-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .profile-panel p {
   margin: 0;
   line-height: 1.45;
@@ -1307,6 +1331,7 @@ code {
 
   .delete-confirmation,
   .delete-confirmation div,
+  .danger-actions,
   .run-row-actions {
     display: grid;
   }
