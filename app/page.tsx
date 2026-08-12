@@ -56,6 +56,7 @@ type UpcomingRunVolunteer = {
   upcomingRunId: string;
   runnerId: string;
   attending: boolean;
+  note?: string;
 };
 
 type AppState = {
@@ -121,6 +122,7 @@ type SupabaseUpcomingRunVolunteerRow = {
   upcoming_run_id: string;
   runner_id: string;
   attending: boolean;
+  note?: string | null;
 };
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
@@ -586,6 +588,7 @@ function fromUpcomingRunVolunteerRow(row: SupabaseUpcomingRunVolunteerRow): Upco
     upcomingRunId: row.upcoming_run_id,
     runnerId: row.runner_id,
     attending: row.attending,
+    note: row.note ?? undefined,
   };
 }
 
@@ -595,6 +598,7 @@ function toUpcomingRunVolunteerRow(volunteer: UpcomingRunVolunteer): SupabaseUpc
     upcoming_run_id: volunteer.upcomingRunId,
     runner_id: volunteer.runnerId,
     attending: volunteer.attending,
+    note: volunteer.note || null,
   };
 }
 
@@ -1000,12 +1004,16 @@ export default function Home() {
     }
   }
 
-  async function updateUpcomingVolunteer(upcomingRunId: string, runnerId: string, attending: boolean) {
+  async function updateUpcomingVolunteer(upcomingRunId: string, runnerId: string, attending: boolean, note?: string) {
+    const existing = state.upcomingRunVolunteers.find(
+      (item) => item.upcomingRunId === upcomingRunId && item.runnerId === runnerId,
+    );
     const volunteer: UpcomingRunVolunteer = {
-      id: `${upcomingRunId}-${runnerId}`,
+      id: existing?.id ?? `${upcomingRunId}-${runnerId}`,
       upcomingRunId,
       runnerId,
       attending,
+      note: note?.trim() || undefined,
     };
 
     setState((current) => {
@@ -1024,7 +1032,7 @@ export default function Home() {
       try {
         await upsertUpcomingRunVolunteer(volunteer);
         setConnectionState("connected");
-        setMessage("Upcoming run RSVP saved.");
+        setMessage(attending ? "Volunteer marked attending." : "Volunteer declined with note.");
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "RSVP saved locally, but Supabase did not update.");
@@ -2331,7 +2339,7 @@ function UpcomingRunsSection({
   state: AppState;
   onCreateRun: (date: string, title?: string) => Promise<void>;
   onUpdateRunTitle: (upcomingRunId: string, title: string) => Promise<void>;
-  onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean) => Promise<void>;
+  onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean, note?: string) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
   onDeleteRun: (upcomingRunId: string) => Promise<void>;
 }) {
@@ -2339,6 +2347,7 @@ function UpcomingRunsSection({
   const [runTitle, setRunTitle] = useState("");
   const [expandedRunId, setExpandedRunId] = useState("");
   const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
+  const [declineNotes, setDeclineNotes] = useState<Record<string, string>>({});
   const [savingTitleId, setSavingTitleId] = useState("");
   const [savingDate, setSavingDate] = useState(false);
   const activeVolunteers = state.runners
@@ -2471,22 +2480,60 @@ function UpcomingRunsSection({
 
                     <div className="volunteer-rsvp-grid" aria-label={`Volunteer RSVPs for ${run.title}`}>
                       {activeVolunteers.map((volunteer) => {
-                        const attending = state.upcomingRunVolunteers.some(
-                          (item) => item.upcomingRunId === run.id && item.runnerId === volunteer.id && item.attending,
+                        const response = state.upcomingRunVolunteers.find(
+                          (item) => item.upcomingRunId === run.id && item.runnerId === volunteer.id,
                         );
+                        const noteKey = `${run.id}-${volunteer.id}`;
+                        const noteDraft = declineNotes[noteKey] ?? response?.note ?? "";
+                        const statusLabel = response
+                          ? response.attending
+                            ? "Attending"
+                            : response.note
+                              ? `Declined: ${response.note}`
+                              : "Declined"
+                          : "Not marked";
                         return (
-                          <label key={volunteer.id} className={attending ? "volunteer-rsvp checked" : "volunteer-rsvp"}>
-                            <input
-                              type="checkbox"
-                              checked={attending}
-                              onChange={(event) => onToggleVolunteer(run.id, volunteer.id, event.target.checked)}
-                            />
+                          <div
+                            key={volunteer.id}
+                            className={
+                              response?.attending
+                                ? "volunteer-rsvp checked"
+                                : response
+                                  ? "volunteer-rsvp declined"
+                                  : "volunteer-rsvp"
+                            }
+                          >
                             <Avatar runner={volunteer} />
                             <span>
                               <strong>{runnerName(volunteer)}</strong>
-                              <small>{attending ? "Attending" : "Not marked"}</small>
+                              <small>{statusLabel}</small>
                             </span>
-                          </label>
+                            <div className="rsvp-actions">
+                              <button
+                                className={response?.attending ? "rsvp-action active" : "rsvp-action"}
+                                onClick={() => onToggleVolunteer(run.id, volunteer.id, true)}
+                              >
+                                Attending
+                              </button>
+                              <button
+                                className={response && !response.attending ? "rsvp-action decline active" : "rsvp-action decline"}
+                                onClick={() => onToggleVolunteer(run.id, volunteer.id, false, noteDraft)}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                            {response && !response.attending && (
+                              <label className="decline-note">
+                                <span>Decline note</span>
+                                <textarea
+                                  value={noteDraft}
+                                  onChange={(event) => setDeclineNotes((current) => ({ ...current, [noteKey]: event.target.value }))}
+                                  onBlur={(event) => onToggleVolunteer(run.id, volunteer.id, false, event.target.value)}
+                                  placeholder="Optional note..."
+                                />
+                              </label>
+                            )}
+                          </div>
                         );
                       })}
                     </div>

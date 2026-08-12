@@ -20,3 +20,6 @@ create index if not exists upcoming_runs_run_date_idx
 
 create index if not exists upcoming_run_volunteers_run_idx
   on public.upcoming_run_volunteers(upcoming_run_id);
+
+alter table public.upcoming_run_volunteers
+  add column if not exists note text;
