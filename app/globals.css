@@ -690,6 +690,35 @@ a.nav-item {
   outline: none;
 }
 
+.read-only-field {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  padding: 0 12px;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.earned-field {
+  border-color: rgba(36, 111, 71, 0.34);
+  background: rgba(36, 111, 71, 0.09);
+  color: #246f47;
+}
+
+.notes-read-only {
+  align-items: flex-start;
+  min-height: 132px;
+  padding-top: 12px;
+  white-space: pre-wrap;
+}
+
 .notes-editor textarea,
 .profile-editor textarea,
 .decline-note textarea {
@@ -941,6 +970,31 @@ a.nav-item {
   min-height: calc(100vh - 124px);
 }
 
+.collapsible-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 4px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.collapsible-section-head h4 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.05rem;
+}
+
+.collapsible-section-head small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .section-heading span {
   color: var(--muted);
   font-weight: 800;
@@ -1171,6 +1225,131 @@ a.nav-item {
 
 .chart-value-label.volunteers {
   fill: #9a6e1e;
+}
+
+.leaderboard-card {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 16px;
+}
+
+.leaderboard-card.empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.leaderboard-card.empty p {
+  margin: 0;
+}
+
+.leaderboard-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.leaderboard-head h4 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.22rem;
+}
+
+.shoe-key,
+.shoe-earned-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(36, 111, 71, 0.22);
+  border-radius: 999px;
+  background: rgba(36, 111, 71, 0.08);
+  color: #246f47;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 34px 48px minmax(0, 1fr) minmax(58px, auto) minmax(0, auto);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  padding: 10px;
+}
+
+.leaderboard-row.earned {
+  border-color: rgba(36, 111, 71, 0.28);
+  background: linear-gradient(90deg, rgba(36, 111, 71, 0.08), var(--surface-strong) 48%);
+}
+
+.leaderboard-rank {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 900;
+}
+
+.leaderboard-person {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.leaderboard-person strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-person small,
+.leaderboard-score small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.leaderboard-meter {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(104, 115, 125, 0.14);
+}
+
+.leaderboard-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+}
+
+.leaderboard-score {
+  text-align: right;
+}
+
+.leaderboard-score strong {
+  display: block;
+  color: var(--navy);
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .table-row {
@@ -1548,7 +1727,9 @@ code {
 
   .run-summary,
   .section-heading,
-  .trend-chart-head {
+  .trend-chart-head,
+  .leaderboard-head,
+  .collapsible-section-head {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1559,6 +1740,21 @@ code {
 
   .section-counts {
     justify-content: flex-start;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 30px 44px minmax(0, 1fr) minmax(52px, auto);
+  }
+
+  .shoe-earned-pill {
+    grid-column: 3 / -1;
+    justify-self: start;
+    white-space: normal;
+  }
+
+  .shoe-key {
+    align-self: flex-start;
+    white-space: normal;
   }
 
   .toolbar,

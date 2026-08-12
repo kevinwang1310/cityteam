@@ -1560,6 +1560,7 @@ function ProfileCard({
   const recentAttendanceRate = recentRunTrend.length
     ? Math.round((recentAttendances / recentRunTrend.length) * 100)
     : 0;
+  const totalRunsAttended = countAttendance(state, runner.id);
   const automaticFirstJoinedDate = firstJoinedDate(state, runner.id) ?? runner.dateFirstJoined;
 
   return (
@@ -1594,34 +1595,42 @@ function ProfileCard({
       </div>
 
       <div className="profile-stats">
-        <span><strong>{countAttendance(state, runner.id)}</strong> Runs</span>
+        <span><strong>{totalRunsAttended}</strong> Runs</span>
         <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
         <span><strong>{lastSeen(state, runner.id)}</strong> Last run</span>
       </div>
 
-      {isEditingProfile ? (
-        <section>
-          <h4>Edit Profile</h4>
-          <div className="profile-editor">
-            <div className="profile-editor-section">
-              <span>Profile</span>
-            </div>
-            <label>
-              <span>First name</span>
+      <section>
+        <h4>Profile Details</h4>
+        <div className={isEditingProfile ? "profile-editor" : "profile-editor read-only-profile"}>
+          <div className="profile-editor-section">
+            <span>Profile</span>
+          </div>
+          <label>
+            <span>First name</span>
+            {isEditingProfile ? (
               <input
                 value={profileDraft.firstName}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, firstName: event.target.value }))}
               />
-            </label>
-            <label>
-              <span>Last name</span>
+            ) : (
+              <strong className="read-only-field">{runner.firstName || "Not set"}</strong>
+            )}
+          </label>
+          <label>
+            <span>Last name</span>
+            {isEditingProfile ? (
               <input
                 value={profileDraft.lastName}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, lastName: event.target.value }))}
               />
-            </label>
-            <label>
-              <span>Status</span>
+            ) : (
+              <strong className="read-only-field">{runner.lastName || "Not set"}</strong>
+            )}
+          </label>
+          <label>
+            <span>Status</span>
+            {isEditingProfile ? (
               <select
                 value={profileDraft.status}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, status: event.target.value as RunnerStatus }))}
@@ -1630,9 +1639,13 @@ function ProfileCard({
                   <option key={status} value={status}>{statusLabels[status]}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span>Type</span>
+            ) : (
+              <strong className="read-only-field">{statusLabels[normalizeRunnerStatus(runner.status)]}</strong>
+            )}
+          </label>
+          <label>
+            <span>Type</span>
+            {isEditingProfile ? (
               <select
                 value={profileDraft.personType}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, personType: event.target.value as PersonType }))}
@@ -1641,12 +1654,16 @@ function ProfileCard({
                   <option key={personType} value={personType}>{personTypeLabels[personType]}</option>
                 ))}
               </select>
-            </label>
-            <div className="profile-editor-section">
-              <span>Shoes</span>
-            </div>
-            <label>
-              <span>Shoe size</span>
+            ) : (
+              <strong className="read-only-field">{personTypeLabels[runner.personType]}</strong>
+            )}
+          </label>
+          <div className="profile-editor-section">
+            <span>Shoes</span>
+          </div>
+          <label>
+            <span>Shoe size</span>
+            {isEditingProfile ? (
               <select
                 value={profileDraft.shoeSize}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, shoeSize: event.target.value }))}
@@ -1655,28 +1672,50 @@ function ProfileCard({
                   <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span>Demo shoes received</span>
+            ) : (
+              <strong className="read-only-field">{runner.shoeSize || "Unknown"}</strong>
+            )}
+          </label>
+          <label>
+            <span>Demo shoes received</span>
+            {isEditingProfile ? (
               <input
                 type="date"
                 value={profileDraft.demoShoesReceivedDate}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, demoShoesReceivedDate: event.target.value }))}
               />
-            </label>
-            <label>
-              <span>New shoes received</span>
+            ) : (
+              <strong className="read-only-field">
+                {runner.demoShoesReceivedDate ? formatShortDate(runner.demoShoesReceivedDate) : "Not received"}
+              </strong>
+            )}
+          </label>
+          <label>
+            <span>New shoes received</span>
+            {isEditingProfile ? (
               <input
                 type="date"
                 value={profileDraft.newShoesReceivedDate}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, newShoesReceivedDate: event.target.value }))}
               />
-            </label>
-            <div className="profile-editor-section">
-              <span>Shirt</span>
-            </div>
-            <label>
-              <span>Shirt size</span>
+            ) : (
+              <strong className="read-only-field">
+                {runner.newShoesReceivedDate ? formatShortDate(runner.newShoesReceivedDate) : "Not received"}
+              </strong>
+            )}
+          </label>
+          <label>
+            <span>Shoe milestone</span>
+            <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
+              {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
+            </strong>
+          </label>
+          <div className="profile-editor-section">
+            <span>Shirt</span>
+          </div>
+          <label>
+            <span>Shirt size</span>
+            {isEditingProfile ? (
               <select
                 value={profileDraft.tshirtSize}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, tshirtSize: event.target.value }))}
@@ -1685,28 +1724,42 @@ function ProfileCard({
                   <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span>Shirt received</span>
+            ) : (
+              <strong className="read-only-field">{runner.tshirtSize || "Unknown"}</strong>
+            )}
+          </label>
+          <label>
+            <span>Shirt received</span>
+            {isEditingProfile ? (
               <input
                 type="date"
                 value={profileDraft.shirtReceivedDate}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, shirtReceivedDate: event.target.value }))}
               />
-            </label>
-            <div className="profile-editor-section">
-              <span>Notes</span>
-            </div>
-            <label className="wide-field">
-              <span>Memory notes</span>
-            <textarea
-              value={profileDraft.notes}
-              onChange={(event) => setProfileDraft((current) => ({ ...current, notes: event.target.value }))}
-              placeholder="Add memory notes, running history, gear context, or follow-up details..."
-              aria-label={`Edit memory notes for ${runnerName(runner)}`}
-            />
-            </label>
-            {profileError && <p className="form-error wide-field">{profileError}</p>}
+            ) : (
+              <strong className="read-only-field">
+                {runner.shirtReceivedDate ? formatShortDate(runner.shirtReceivedDate) : "Not received"}
+              </strong>
+            )}
+          </label>
+          <div className="profile-editor-section">
+            <span>Notes</span>
+          </div>
+          <label className="wide-field">
+            <span>Memory notes</span>
+            {isEditingProfile ? (
+              <textarea
+                value={profileDraft.notes}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, notes: event.target.value }))}
+                placeholder="Add memory notes, running history, gear context, or follow-up details..."
+                aria-label={`Edit memory notes for ${runnerName(runner)}`}
+              />
+            ) : (
+              <strong className="read-only-field notes-read-only">{runner.notes || "No notes yet."}</strong>
+            )}
+          </label>
+          {profileError && <p className="form-error wide-field">{profileError}</p>}
+          {isEditingProfile && (
             <div className="notes-actions">
               <button
                 className="secondary-action"
@@ -1745,7 +1798,7 @@ function ProfileCard({
                       shoeSize: profileDraft.shoeSize,
                       tshirtSize: profileDraft.tshirtSize,
                       shirtReceivedDate: profileDraft.shirtReceivedDate,
-                      dateFirstJoined: profileDraft.personType === "cityteam_client" ? automaticFirstJoinedDate ?? "" : "",
+                      dateFirstJoined: automaticFirstJoinedDate ?? "",
                       demoShoesReceivedDate: profileDraft.demoShoesReceivedDate,
                       newShoesReceivedDate: profileDraft.newShoesReceivedDate,
                     });
@@ -1760,27 +1813,9 @@ function ProfileCard({
                 {isSavingProfile ? "Saving..." : "Save Profile"}
               </button>
             </div>
-          </div>
-        </section>
-      ) : (
-        <>
-          <section>
-            <h4>Memory Notes</h4>
-            <p>{runner.notes || "No notes yet."}</p>
-          </section>
-
-          <section>
-            <h4>Gear</h4>
-          <div className="gear-grid">
-            <span>Shoe {runner.shoeSize || "?"}</span>
-            <span>{runner.demoShoesReceivedDate ? `Demo received ${formatShortDate(runner.demoShoesReceivedDate)}` : "Demo shoes pending"}</span>
-            <span>{runner.newShoesReceivedDate ? `New received ${formatShortDate(runner.newShoesReceivedDate)}` : "New shoes pending"}</span>
-            <span>Shirt {runner.tshirtSize || "?"}</span>
-            <span>{runner.shirtReceivedDate ? `Received ${formatShortDate(runner.shirtReceivedDate)}` : "Shirt pending"}</span>
-          </div>
-          </section>
-        </>
-      )}
+          )}
+        </div>
+      </section>
 
       <section>
         <div className="section-title-row">
@@ -1809,7 +1844,6 @@ function ProfileCard({
       </section>
 
       <section className="danger-zone">
-        <h4>Delete Profile</h4>
         {isConfirmingDelete ? (
           <>
             <p>
@@ -2189,6 +2223,66 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
   );
 }
 
+function AttendanceLeaderboard({ state }: { state: AppState }) {
+  const leaders = state.runners
+    .map((runner) => ({
+      runner,
+      runsAttended: countAttendance(state, runner.id),
+    }))
+    .filter((entry) => entry.runsAttended > 0)
+    .sort((a, b) => b.runsAttended - a.runsAttended || runnerName(a.runner).localeCompare(runnerName(b.runner)))
+    .slice(0, 10);
+  const topCount = Math.max(1, ...leaders.map((entry) => entry.runsAttended));
+
+  if (!leaders.length) {
+    return (
+      <div className="leaderboard-card empty">
+        <p>No attendance yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="leaderboard-card">
+      <div className="leaderboard-head">
+        <div>
+          <p className="eyebrow">Leaderboard</p>
+          <h4>Best Attendance</h4>
+        </div>
+        <span className="shoe-key"><span aria-hidden="true">👟</span> 4 runs earns new shoes</span>
+      </div>
+      <div className="leaderboard-list">
+        {leaders.map(({ runner, runsAttended }, index) => {
+          const earnedShoes = runsAttended >= 4;
+          return (
+            <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
+              <span className="leaderboard-rank">{index + 1}</span>
+              <Avatar runner={runner} />
+              <div className="leaderboard-person">
+                <strong>{runnerName(runner)}</strong>
+                <small>{personTypeLabels[runner.personType]}</small>
+                <div className="leaderboard-meter" aria-hidden="true">
+                  <span style={{ width: `${Math.max(8, (runsAttended / topCount) * 100)}%` }} />
+                </div>
+              </div>
+              <div className="leaderboard-score">
+                <strong>{runsAttended}</strong>
+                <small>{runsAttended === 1 ? "run" : "runs"}</small>
+              </div>
+              {earnedShoes && (
+                <span className="shoe-earned-pill">
+                  <span aria-hidden="true">👟</span>
+                  New Shoes earned
+                </span>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RunsSection({
   state,
   onToggleAttendance,
@@ -2200,7 +2294,9 @@ function RunsSection({
 }) {
   const [editingRunId, setEditingRunId] = useState("");
   const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState("");
+  const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
   const runners = state.runners.slice().sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
+  const sortedRuns = state.runs.slice().sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <section className="content-section">
@@ -2211,11 +2307,27 @@ function RunsSection({
         </div>
       </div>
       <AttendanceTrendChart state={state} />
-      <div className="table-list">
-        {state.runs
-          .slice()
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .map((run) => {
+      <AttendanceLeaderboard state={state} />
+      <div className="collapsible-section-head">
+        <div>
+          <p className="eyebrow">Run records</p>
+          <h4>Attendance Details</h4>
+          <small>{sortedRuns.length} saved {sortedRuns.length === 1 ? "run" : "runs"}</small>
+        </div>
+        <button
+          className="secondary-action"
+          onClick={() => {
+            setShowAttendanceHistory((current) => !current);
+            setEditingRunId("");
+            setConfirmingDeleteRunId("");
+          }}
+        >
+          {showAttendanceHistory ? "Collapse" : "Show Details"}
+        </button>
+      </div>
+      {showAttendanceHistory && (
+        <div className="table-list">
+          {sortedRuns.map((run) => {
             const records = state.attendance.filter((item) => item.runId === run.id && item.attended);
             const isEditing = editingRunId === run.id;
             const isConfirmingDelete = confirmingDeleteRunId === run.id;
@@ -2297,7 +2409,8 @@ function RunsSection({
               </article>
             );
           })}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
