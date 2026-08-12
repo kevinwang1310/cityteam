@@ -708,9 +708,13 @@ export default function Home() {
 
   const checkinSummary = useMemo(() => {
     const firstTimers = todayAttendance.filter((item) => countAttendance(state, item.runnerId) === 1).length;
+    const cityTeamClientsToday = todayAttendance.filter(
+      (item) => state.runners.find((runner) => runner.id === item.runnerId)?.personType === "cityteam_client",
+    ).length;
 
     return {
       checkedIn: todayAttendance.length,
+      cityTeamClientsToday,
       volunteersToday: todayAttendance.filter((item) => item.wasVolunteer).length,
       firstTimers,
     };
@@ -1050,6 +1054,7 @@ export default function Home() {
                   <h3>{checkinSummary.checkedIn} checked in</h3>
                 </div>
                 <div className="summary-pills">
+                  <span>{checkinSummary.cityTeamClientsToday} CityTeam clients</span>
                   <span>{checkinSummary.volunteersToday} volunteers</span>
                   <span>{checkinSummary.firstTimers} first-timers</span>
                 </div>
