@@ -132,44 +132,6 @@ a.nav-item {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.sync-card {
-  margin-top: auto;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.sync-card p,
-.sync-card strong {
-  margin: 0;
-}
-
-.sync-card p {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.sync-dot {
-  width: 10px;
-  height: 10px;
-  margin-top: 5px;
-  border-radius: 999px;
-  background: var(--gold);
-}
-
-.sync-dot.connected {
-  background: #4dd28f;
-}
-
-.sync-dot.error {
-  background: #ff8a80;
-}
-
 .workspace {
   padding: 26px;
   min-width: 0;
@@ -1715,10 +1677,6 @@ code {
   .nav-item {
     text-align: center;
     padding: 0 8px;
-  }
-
-  .sync-card {
-    display: none;
   }
 
   .checkin-layout {

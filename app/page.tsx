@@ -1312,13 +1312,6 @@ export default function Home() {
           </a>
         </nav>
 
-        <div className="sync-card">
-          <span className={`sync-dot ${connectionState}`} />
-          <div>
-            <strong>{connectionState === "connected" ? "Supabase live" : connectionState === "loading" ? "Connecting" : connectionState === "error" ? "Needs setup" : "Demo mode"}</strong>
-            <p>{message}</p>
-          </div>
-        </div>
       </aside>
 
       <section className="workspace">
@@ -2050,10 +2043,17 @@ function PhotoCropper({
 function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner: (id: string) => void }) {
   const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("all");
+  const [query, setQuery] = useState("");
+  const cleanQuery = query.trim().toLowerCase();
   const visibleRunners = state.runners.filter((runner) => {
     return (
       (statusFilter === "all" || normalizeRunnerStatus(runner.status) === statusFilter) &&
-      (personTypeFilter === "all" || runner.personType === personTypeFilter)
+      (personTypeFilter === "all" || runner.personType === personTypeFilter) &&
+      (!cleanQuery ||
+        [runnerName(runner), runner.firstName, runner.lastName]
+          .join(" ")
+          .toLowerCase()
+          .includes(cleanQuery))
     );
   });
   const activeCityTeamClients = state.runners.filter(
@@ -2076,6 +2076,14 @@ function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner:
         </div>
       </div>
       <div className="directory-filters">
+        <div className="toolbar">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name..."
+            aria-label="Search people by name"
+          />
+        </div>
         <div className="filter-row" aria-label="People status filter">
           {([...statusOptions, "all"] as const).map((status) => (
             <button
