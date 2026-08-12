@@ -950,12 +950,12 @@ export default function Home() {
     }
   }
 
-  async function createUpcomingRun(date: string) {
+  async function createUpcomingRun(date: string, title?: string) {
     if (!date) return;
     const run: UpcomingRun = {
       id: `upcoming-${date}`,
       date,
-      title: `${formatShortDate(date)} Run`,
+      title: title?.trim() || `${formatShortDate(date)} Run`,
     };
 
     setState((current) => ({
@@ -973,6 +973,29 @@ export default function Home() {
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Upcoming run saved locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function updateUpcomingRunTitle(upcomingRunId: string, title: string) {
+    const currentRun = state.upcomingRuns.find((run) => run.id === upcomingRunId);
+    const cleanTitle = title.trim();
+    if (!currentRun || !cleanTitle) return;
+    const nextRun = { ...currentRun, title: cleanTitle };
+
+    setState((current) => ({
+      ...current,
+      upcomingRuns: current.upcomingRuns.map((run) => (run.id === upcomingRunId ? nextRun : run)),
+    }));
+
+    if (hasSupabaseConfig()) {
+      try {
+        await upsertUpcomingRun(nextRun);
+        setConnectionState("connected");
+        setMessage("Upcoming run title saved.");
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Run title saved locally, but Supabase did not update.");
       }
     }
   }
@@ -1412,6 +1435,7 @@ export default function Home() {
           <UpcomingRunsSection
             state={state}
             onCreateRun={createUpcomingRun}
+            onUpdateRunTitle={updateUpcomingRunTitle}
             onToggleVolunteer={updateUpcomingVolunteer}
             onSetSnackVolunteer={updateUpcomingSnackVolunteer}
             onDeleteRun={deleteUpcomingRun}
@@ -2299,17 +2323,23 @@ function RunsSection({
 function UpcomingRunsSection({
   state,
   onCreateRun,
+  onUpdateRunTitle,
   onToggleVolunteer,
   onSetSnackVolunteer,
   onDeleteRun,
 }: {
   state: AppState;
-  onCreateRun: (date: string) => Promise<void>;
+  onCreateRun: (date: string, title?: string) => Promise<void>;
+  onUpdateRunTitle: (upcomingRunId: string, title: string) => Promise<void>;
   onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
   onDeleteRun: (upcomingRunId: string) => Promise<void>;
 }) {
   const [runDate, setRunDate] = useState(nextSaturdayDate());
+  const [runTitle, setRunTitle] = useState("");
+  const [expandedRunId, setExpandedRunId] = useState("");
+  const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
+  const [savingTitleId, setSavingTitleId] = useState("");
   const [savingDate, setSavingDate] = useState(false);
   const activeVolunteers = state.runners
     .filter((runner) => runner.personType === "volunteer" && normalizeRunnerStatus(runner.status) === "active")
@@ -2341,14 +2371,24 @@ function UpcomingRunsSection({
             onChange={(event) => setRunDate(event.target.value)}
           />
         </label>
+        <label>
+          <span>Title</span>
+          <input
+            value={runTitle}
+            onChange={(event) => setRunTitle(event.target.value)}
+            placeholder={`${formatShortDate(runDate)} Run`}
+          />
+        </label>
         <button
           className="primary-action"
           disabled={!runDate || savingDate}
           onClick={async () => {
             setSavingDate(true);
             try {
-              await onCreateRun(runDate);
+              await onCreateRun(runDate, runTitle);
+              setExpandedRunId(`upcoming-${runDate}`);
               setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
+              setRunTitle("");
             } finally {
               setSavingDate(false);
             }
@@ -2365,8 +2405,10 @@ function UpcomingRunsSection({
               (item) => item.upcomingRunId === run.id && item.attending,
             );
             const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
+            const isExpanded = expandedRunId === run.id;
+            const titleDraft = titleDrafts[run.id] ?? run.title;
             return (
-              <article key={run.id} className="upcoming-run-card">
+              <article key={run.id} className={isExpanded ? "upcoming-run-card expanded" : "upcoming-run-card"}>
                 <div className="upcoming-run-head">
                   <span>
                     <strong>{run.title}</strong>
@@ -2376,50 +2418,86 @@ function UpcomingRunsSection({
                     <span>{volunteerRecords.length} attending</span>
                     <span>{snackVolunteer ? `${runnerName(snackVolunteer)} snacks` : "Snacks open"}</span>
                   </div>
-                </div>
-
-                <label className="snack-select">
-                  <span>Snack volunteer</span>
-                  <select
-                    value={run.snackRunnerId ?? ""}
-                    onChange={(event) => onSetSnackVolunteer(run.id, event.target.value)}
+                  <button
+                    className="text-action"
+                    onClick={() => setExpandedRunId(isExpanded ? "" : run.id)}
+                    aria-expanded={isExpanded}
                   >
-                    <option value="">No one yet</option>
-                    {activeVolunteers.map((volunteer) => (
-                      <option key={volunteer.id} value={volunteer.id}>
-                        {runnerName(volunteer)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="volunteer-rsvp-grid" aria-label={`Volunteer RSVPs for ${run.title}`}>
-                  {activeVolunteers.map((volunteer) => {
-                    const attending = state.upcomingRunVolunteers.some(
-                      (item) => item.upcomingRunId === run.id && item.runnerId === volunteer.id && item.attending,
-                    );
-                    return (
-                      <label key={volunteer.id} className={attending ? "volunteer-rsvp checked" : "volunteer-rsvp"}>
-                        <input
-                          type="checkbox"
-                          checked={attending}
-                          onChange={(event) => onToggleVolunteer(run.id, volunteer.id, event.target.checked)}
-                        />
-                        <Avatar runner={volunteer} />
-                        <span>
-                          <strong>{runnerName(volunteer)}</strong>
-                          <small>{attending ? "Attending" : "Not marked"}</small>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                <div className="upcoming-run-actions">
-                  <button className="danger-action" onClick={() => onDeleteRun(run.id)}>
-                    Delete Upcoming Run
+                    {isExpanded ? "Collapse" : "Details"}
                   </button>
                 </div>
+
+                {isExpanded && (
+                  <div className="upcoming-run-details">
+                    <div className="upcoming-title-editor">
+                      <label>
+                        <span>Run title</span>
+                        <input
+                          value={titleDraft}
+                          onChange={(event) => setTitleDrafts((current) => ({ ...current, [run.id]: event.target.value }))}
+                          placeholder="Saturday Run, 5K Race, Shoe Demo..."
+                        />
+                      </label>
+                      <button
+                        className="secondary-action"
+                        disabled={!titleDraft.trim() || savingTitleId === run.id}
+                        onClick={async () => {
+                          setSavingTitleId(run.id);
+                          try {
+                            await onUpdateRunTitle(run.id, titleDraft);
+                          } finally {
+                            setSavingTitleId("");
+                          }
+                        }}
+                      >
+                        {savingTitleId === run.id ? "Saving..." : "Save Title"}
+                      </button>
+                    </div>
+
+                    <label className="snack-select">
+                      <span>Snack volunteer</span>
+                      <select
+                        value={run.snackRunnerId ?? ""}
+                        onChange={(event) => onSetSnackVolunteer(run.id, event.target.value)}
+                      >
+                        <option value="">No one yet</option>
+                        {activeVolunteers.map((volunteer) => (
+                          <option key={volunteer.id} value={volunteer.id}>
+                            {runnerName(volunteer)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="volunteer-rsvp-grid" aria-label={`Volunteer RSVPs for ${run.title}`}>
+                      {activeVolunteers.map((volunteer) => {
+                        const attending = state.upcomingRunVolunteers.some(
+                          (item) => item.upcomingRunId === run.id && item.runnerId === volunteer.id && item.attending,
+                        );
+                        return (
+                          <label key={volunteer.id} className={attending ? "volunteer-rsvp checked" : "volunteer-rsvp"}>
+                            <input
+                              type="checkbox"
+                              checked={attending}
+                              onChange={(event) => onToggleVolunteer(run.id, volunteer.id, event.target.checked)}
+                            />
+                            <Avatar runner={volunteer} />
+                            <span>
+                              <strong>{runnerName(volunteer)}</strong>
+                              <small>{attending ? "Attending" : "Not marked"}</small>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <div className="upcoming-run-actions">
+                      <button className="danger-action" onClick={() => onDeleteRun(run.id)}>
+                        Delete Upcoming Run
+                      </button>
+                    </div>
+                  </div>
+                )}
               </article>
             );
           })
