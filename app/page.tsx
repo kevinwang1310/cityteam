@@ -1561,6 +1561,7 @@ function ProfileCard({
     : 0;
   const totalRunsAttended = countAttendance(state, runner.id);
   const automaticFirstJoinedDate = firstJoinedDate(state, runner.id) ?? runner.dateFirstJoined;
+  const canEarnNewShoes = (isEditingProfile ? profileDraft.personType : runner.personType) === "cityteam_client";
 
   return (
     <aside className={isMobileOpen ? "profile-panel mobile-profile-open" : "profile-panel"} ref={panelRef}>
@@ -1703,12 +1704,14 @@ function ProfileCard({
               </strong>
             )}
           </label>
-          <label>
-            <span>Shoe milestone</span>
-            <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
-              {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
-            </strong>
-          </label>
+          {canEarnNewShoes && (
+            <label>
+              <span>Shoe milestone</span>
+              <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
+                {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
+              </strong>
+            </label>
+          )}
           <div className="profile-editor-section">
             <span>Shirt</span>
           </div>
