@@ -916,6 +916,32 @@ a.nav-item {
   font-weight: 800;
 }
 
+.section-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.section-counts span {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: var(--surface-strong);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.section-counts strong {
+  color: var(--navy);
+  font-size: 1rem;
+}
+
 .directory-filters {
   display: grid;
   gap: 10px;
@@ -1312,6 +1338,10 @@ code {
   }
 
   .chart-legend {
+    justify-content: flex-start;
+  }
+
+  .section-counts {
     justify-content: flex-start;
   }
 

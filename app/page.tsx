@@ -1756,6 +1756,12 @@ function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner:
       (personTypeFilter === "all" || runner.personType === personTypeFilter)
     );
   });
+  const activeCityTeamClients = state.runners.filter(
+    (runner) => normalizeRunnerStatus(runner.status) === "active" && runner.personType === "cityteam_client",
+  ).length;
+  const activeVolunteers = state.runners.filter(
+    (runner) => normalizeRunnerStatus(runner.status) === "active" && runner.personType === "volunteer",
+  ).length;
 
   return (
     <section className="content-section">
@@ -1764,7 +1770,10 @@ function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner:
           <p className="eyebrow">Photo directory</p>
           <h3>People</h3>
         </div>
-        <span>{visibleRunners.length} profiles</span>
+        <div className="section-counts" aria-label="Active people summary">
+          <span><strong>{activeCityTeamClients}</strong> active CityTeam clients</span>
+          <span><strong>{activeVolunteers}</strong> active volunteers</span>
+        </div>
       </div>
       <div className="directory-filters">
         <div className="filter-row" aria-label="People status filter">
