@@ -661,8 +661,25 @@ a.nav-item {
 
 .profile-editor .wide-field,
 .profile-editor .notes-actions,
-.profile-editor .form-error {
+.profile-editor .form-error,
+.profile-editor-section {
   grid-column: 1 / -1;
+}
+
+.profile-editor-section {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--navy);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-editor-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .profile-editor input,
@@ -1438,10 +1455,6 @@ a.nav-item {
   color: var(--navy);
 }
 
-.gear-row {
-  grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(94px, 0.4fr));
-}
-
 .setup-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1555,8 +1568,7 @@ code {
   .profile-editor,
   .runner-row,
   .row-actions,
-  .table-row,
-  .gear-row {
+  .table-row {
     grid-template-columns: 1fr;
   }
 

@@ -6,25 +6,25 @@ type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
-type Section = "checkin" | "people" | "runs" | "upcoming" | "gear" | "settings";
+type Section = "checkin" | "people" | "runs" | "upcoming" | "settings";
 
 type Runner = {
   id: string;
   firstName: string;
   lastName: string;
-  nickname?: string;
   photoUrl?: string;
   status: RunnerStatus;
   personType: PersonType;
-  teamRole?: string;
   notes?: string;
-  attendanceUpdates?: string;
   shoeSize?: string;
   shoeStatus?: ShoeStatus;
   demoShoes?: boolean;
   tshirtSize?: string;
   oldTshirtSize?: string;
   shirtReceivedDate?: string;
+  dateFirstJoined?: string;
+  demoShoesReceivedDate?: string;
+  newShoesReceivedDate?: string;
 };
 
 type Run = {
@@ -86,6 +86,9 @@ type SupabaseRunnerRow = {
   tshirt_size: string | null;
   old_tshirt_size: string | null;
   shirt_received_date: string | null;
+  date_first_joined?: string | null;
+  demo_shoes_received_date?: string | null;
+  new_shoes_received_date?: string | null;
 };
 
 type SupabaseRunRow = {
@@ -179,7 +182,6 @@ const shoeStatusLabels: Record<ShoeStatus, string> = {
   new_and_demo_shoes: "New & Demo shoes",
 };
 
-const shoeStatusOptions = Object.keys(shoeStatusLabels) as ShoeStatus[];
 const profilePhotoMaxPixels = 2048;
 const profilePhotoQuality = 0.96;
 const runClubTimeZone = "America/Los_Angeles";
@@ -205,7 +207,6 @@ const demoState: AppState = {
       lastName: "Flores",
       status: "active",
       personType: "cityteam_client",
-      teamRole: "Director of Facilities",
       shoeSize: "8",
       demoShoes: true,
       tshirtSize: "L",
@@ -217,7 +218,6 @@ const demoState: AppState = {
       lastName: "Peake",
       status: "active",
       personType: "volunteer",
-      teamRole: "CMO",
       shoeSize: "11",
       demoShoes: true,
       tshirtSize: "L",
@@ -229,13 +229,11 @@ const demoState: AppState = {
       lastName: "Tran",
       status: "inactive_working",
       personType: "volunteer",
-      teamRole: "CIO",
       shoeSize: "10",
       demoShoes: true,
       tshirtSize: "L",
       oldTshirtSize: "XL",
       notes: "D is silent, You-Eee, IT, 3 daughters, Cupertino, OC mom",
-      attendanceUpdates: "Working Saturdays now, cannot run",
     },
     {
       id: "chuck-eissler",
@@ -246,7 +244,6 @@ const demoState: AppState = {
       shoeSize: "12",
       tshirtSize: "3XL",
       notes: "Bigger, tie-dye shirt",
-      attendanceUpdates: "Left program 8/1",
     },
     {
       id: "will-wells",
@@ -254,7 +251,6 @@ const demoState: AppState = {
       lastName: "Wells",
       status: "active",
       personType: "volunteer",
-      teamRole: "Team Physician",
       shoeSize: "13",
       demoShoes: true,
       notes: "Yellow shirt, CrossFit Milpitas, met wife",
@@ -270,7 +266,7 @@ const demoState: AppState = {
       oldTshirtSize: "XL",
       shirtReceivedDate: "2026-07-11",
       notes: "Tall, grew up in San Jose",
-      attendanceUpdates: "New 6/20",
+      dateFirstJoined: "2026-06-20",
     },
     {
       id: "bryan",
@@ -286,7 +282,6 @@ const demoState: AppState = {
       id: "refugio-adrian",
       firstName: "Refugio",
       lastName: "",
-      nickname: "Adrian",
       status: "active",
       personType: "cityteam_client",
       shoeSize: "11.5",
@@ -364,7 +359,6 @@ const sections: { id: Section; label: string }[] = [
   { id: "people", label: "People" },
   { id: "runs", label: "Trends" },
   { id: "upcoming", label: "Upcoming Runs" },
-  { id: "gear", label: "Gear" },
 ];
 
 function formatShortDate(date: string) {
@@ -423,7 +417,7 @@ function dateInRunClubTimeZone(date: Date) {
 
 function runnerName(runner: Runner) {
   const full = `${runner.firstName} ${runner.lastName}`.trim();
-  return runner.nickname ? `${full} "${runner.nickname}"` : full;
+  return full || "Unnamed runner";
 }
 
 function initials(runner: Runner) {
@@ -485,19 +479,19 @@ function fromRunnerRow(row: SupabaseRunnerRow): Runner {
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name ?? "",
-    nickname: row.nickname ?? undefined,
     photoUrl: row.photo_url ?? undefined,
     status: normalizeRunnerStatus(row.status),
     personType: row.person_type ?? "cityteam_client",
-    teamRole: row.team_role ?? undefined,
     notes: row.notes ?? undefined,
-    attendanceUpdates: row.attendance_updates ?? undefined,
     shoeSize: row.shoe_size ?? undefined,
     shoeStatus: row.shoe_status ?? (row.demo_shoes ? "demo_shoes" : "no_shoes"),
     demoShoes: Boolean(row.demo_shoes),
     tshirtSize: row.tshirt_size ?? undefined,
     oldTshirtSize: row.old_tshirt_size ?? undefined,
     shirtReceivedDate: row.shirt_received_date ?? undefined,
+    dateFirstJoined: row.date_first_joined ?? undefined,
+    demoShoesReceivedDate: row.demo_shoes_received_date ?? undefined,
+    newShoesReceivedDate: row.new_shoes_received_date ?? undefined,
   };
 }
 
@@ -506,19 +500,22 @@ function toRunnerRow(runner: Runner): SupabaseRunnerRow {
     id: runner.id,
     first_name: runner.firstName,
     last_name: runner.lastName || null,
-    nickname: runner.nickname || null,
+    nickname: null,
     photo_url: runner.photoUrl || null,
     status: normalizeRunnerStatus(runner.status),
     person_type: runner.personType,
-    team_role: runner.teamRole || null,
+    team_role: null,
     notes: runner.notes || null,
-    attendance_updates: runner.attendanceUpdates || null,
+    attendance_updates: null,
     shoe_size: runner.shoeSize || null,
     shoe_status: runner.shoeStatus ?? (runner.demoShoes ? "demo_shoes" : "no_shoes"),
     demo_shoes: Boolean(runner.demoShoes),
     tshirt_size: runner.tshirtSize || null,
     old_tshirt_size: runner.oldTshirtSize || null,
     shirt_received_date: runner.shirtReceivedDate || null,
+    date_first_joined: runner.dateFirstJoined || null,
+    demo_shoes_received_date: runner.demoShoesReceivedDate || null,
+    new_shoes_received_date: runner.newShoesReceivedDate || null,
   };
 }
 
@@ -824,8 +821,6 @@ export default function Home() {
         return [
           runner.firstName,
           runner.lastName,
-          runner.nickname,
-          runner.teamRole,
           personTypeLabels[runner.personType],
           runner.notes,
           runner.tshirtSize,
@@ -1407,7 +1402,7 @@ export default function Home() {
                         <small>
                           <span className="inline-type">{personTypeLabels[runner.personType]}</span>
                           {" | "}
-                          {runner.teamRole || runner.notes || "Runner"} | {countAttendance(state, runner.id)} runs | Last seen {lastSeen(state, runner.id)}
+                          {runner.notes || "Runner"} | {countAttendance(state, runner.id)} runs | Last seen {lastSeen(state, runner.id)}
                         </small>
                       </span>
                     </button>
@@ -1449,7 +1444,6 @@ export default function Home() {
             onDeleteRun={deleteUpcomingRun}
           />
         )}
-        {section === "gear" && <GearSection state={state} />}
         {section === "settings" && <SettingsSection />}
       </section>
 
@@ -1495,17 +1489,15 @@ function ProfileCard({
   const [profileDraft, setProfileDraft] = useState({
     firstName: "",
     lastName: "",
-    nickname: "",
     status: "active" as RunnerStatus,
     personType: "cityteam_client" as PersonType,
-    teamRole: "",
     notes: "",
-    attendanceUpdates: "",
     shoeSize: "",
-    shoeStatus: "no_shoes" as ShoeStatus,
     tshirtSize: "",
-    oldTshirtSize: "",
     shirtReceivedDate: "",
+    dateFirstJoined: "",
+    demoShoesReceivedDate: "",
+    newShoesReceivedDate: "",
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -1515,17 +1507,15 @@ function ProfileCard({
     setProfileDraft({
       firstName: runner?.firstName ?? "",
       lastName: runner?.lastName ?? "",
-      nickname: runner?.nickname ?? "",
       status: normalizeRunnerStatus(runner?.status ?? "active"),
       personType: runner?.personType ?? "cityteam_client",
-      teamRole: runner?.teamRole ?? "",
       notes: runner?.notes ?? "",
-      attendanceUpdates: runner?.attendanceUpdates ?? "",
       shoeSize: runner?.shoeSize ?? "",
-      shoeStatus: runner?.shoeStatus ?? (runner?.demoShoes ? "demo_shoes" : "no_shoes"),
       tshirtSize: runner?.tshirtSize ?? "",
-      oldTshirtSize: runner?.oldTshirtSize ?? "",
       shirtReceivedDate: runner?.shirtReceivedDate ?? "",
+      dateFirstJoined: runner?.dateFirstJoined ?? "",
+      demoShoesReceivedDate: runner?.demoShoesReceivedDate ?? "",
+      newShoesReceivedDate: runner?.newShoesReceivedDate ?? "",
     });
     setIsEditingProfile(false);
     setIsConfirmingDelete(false);
@@ -1536,18 +1526,15 @@ function ProfileCard({
     runner?.id,
     runner?.firstName,
     runner?.lastName,
-    runner?.nickname,
     runner?.personType,
     runner?.status,
-    runner?.teamRole,
     runner?.notes,
-    runner?.attendanceUpdates,
     runner?.shoeSize,
-    runner?.shoeStatus,
-    runner?.demoShoes,
     runner?.tshirtSize,
-    runner?.oldTshirtSize,
     runner?.shirtReceivedDate,
+    runner?.dateFirstJoined,
+    runner?.demoShoesReceivedDate,
+    runner?.newShoesReceivedDate,
     isMobileOpen,
   ]);
 
@@ -1600,7 +1587,11 @@ function ProfileCard({
 
       <div className="profile-stats">
         <span><strong>{countAttendance(state, runner.id)}</strong> Runs</span>
-        <span><strong>{countVolunteered(state, runner.id)}</strong> Volunteer</span>
+        {runner.personType === "cityteam_client" ? (
+          <span><strong>{runner.dateFirstJoined ? formatShortDate(runner.dateFirstJoined) : "Not set"}</strong> First joined</span>
+        ) : (
+          <span><strong>{countVolunteered(state, runner.id)}</strong> Volunteer</span>
+        )}
         <span><strong>{lastSeen(state, runner.id)}</strong> Last seen</span>
       </div>
 
@@ -1608,6 +1599,9 @@ function ProfileCard({
         <section>
           <h4>Edit Profile</h4>
           <div className="profile-editor">
+            <div className="profile-editor-section">
+              <span>Profile</span>
+            </div>
             <label>
               <span>First name</span>
               <input
@@ -1620,13 +1614,6 @@ function ProfileCard({
               <input
                 value={profileDraft.lastName}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, lastName: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Nickname</span>
-              <input
-                value={profileDraft.nickname}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, nickname: event.target.value }))}
               />
             </label>
             <label>
@@ -1651,13 +1638,19 @@ function ProfileCard({
                 ))}
               </select>
             </label>
-            <label>
-              <span>Team role</span>
-              <input
-                value={profileDraft.teamRole}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, teamRole: event.target.value }))}
-              />
-            </label>
+            {profileDraft.personType === "cityteam_client" && (
+              <label>
+                <span>Date first joined</span>
+                <input
+                  type="date"
+                  value={profileDraft.dateFirstJoined}
+                  onChange={(event) => setProfileDraft((current) => ({ ...current, dateFirstJoined: event.target.value }))}
+                />
+              </label>
+            )}
+            <div className="profile-editor-section">
+              <span>Shoes</span>
+            </div>
             <label>
               <span>Shoe size</span>
               <select
@@ -1670,32 +1663,29 @@ function ProfileCard({
               </select>
             </label>
             <label>
-              <span>Shoes</span>
-              <select
-                value={profileDraft.shoeStatus}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, shoeStatus: event.target.value as ShoeStatus }))}
-              >
-                {shoeStatusOptions.map((status) => (
-                  <option key={status} value={status}>{shoeStatusLabels[status]}</option>
-                ))}
-              </select>
+              <span>Demo shoes received</span>
+              <input
+                type="date"
+                value={profileDraft.demoShoesReceivedDate}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, demoShoesReceivedDate: event.target.value }))}
+              />
             </label>
+            <label>
+              <span>New shoes received</span>
+              <input
+                type="date"
+                value={profileDraft.newShoesReceivedDate}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, newShoesReceivedDate: event.target.value }))}
+              />
+            </label>
+            <div className="profile-editor-section">
+              <span>Shirt</span>
+            </div>
             <label>
               <span>Shirt size</span>
               <select
                 value={profileDraft.tshirtSize}
                 onChange={(event) => setProfileDraft((current) => ({ ...current, tshirtSize: event.target.value }))}
-              >
-                {shirtSizeOptions.map((size) => (
-                  <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Old shirt size</span>
-              <select
-                value={profileDraft.oldTshirtSize}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, oldTshirtSize: event.target.value }))}
               >
                 {shirtSizeOptions.map((size) => (
                   <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
@@ -1710,6 +1700,9 @@ function ProfileCard({
                 onChange={(event) => setProfileDraft((current) => ({ ...current, shirtReceivedDate: event.target.value }))}
               />
             </label>
+            <div className="profile-editor-section">
+              <span>Notes</span>
+            </div>
             <label className="wide-field">
               <span>Memory notes</span>
             <textarea
@@ -1719,14 +1712,6 @@ function ProfileCard({
               aria-label={`Edit memory notes for ${runnerName(runner)}`}
             />
             </label>
-            <label className="wide-field">
-              <span>Attendance updates</span>
-              <textarea
-                value={profileDraft.attendanceUpdates}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, attendanceUpdates: event.target.value }))}
-                placeholder="Working schedule, left program notes, or follow-up context..."
-              />
-            </label>
             {profileError && <p className="form-error wide-field">{profileError}</p>}
             <div className="notes-actions">
               <button
@@ -1735,17 +1720,15 @@ function ProfileCard({
                   setProfileDraft({
                     firstName: runner.firstName,
                     lastName: runner.lastName,
-                    nickname: runner.nickname ?? "",
                     status: normalizeRunnerStatus(runner.status),
                     personType: runner.personType,
-                    teamRole: runner.teamRole ?? "",
                     notes: runner.notes ?? "",
-                    attendanceUpdates: runner.attendanceUpdates ?? "",
                     shoeSize: runner.shoeSize ?? "",
-                    shoeStatus: runner.shoeStatus ?? (runner.demoShoes ? "demo_shoes" : "no_shoes"),
                     tshirtSize: runner.tshirtSize ?? "",
-                    oldTshirtSize: runner.oldTshirtSize ?? "",
                     shirtReceivedDate: runner.shirtReceivedDate ?? "",
+                    dateFirstJoined: runner.dateFirstJoined ?? "",
+                    demoShoesReceivedDate: runner.demoShoesReceivedDate ?? "",
+                    newShoesReceivedDate: runner.newShoesReceivedDate ?? "",
                   });
                   setIsEditingProfile(false);
                   setProfileError("");
@@ -1763,17 +1746,15 @@ function ProfileCard({
                     await onSaveProfile(runner.id, {
                       firstName: profileDraft.firstName.trim(),
                       lastName: profileDraft.lastName.trim(),
-                      nickname: profileDraft.nickname.trim(),
                       status: profileDraft.status,
                       personType: profileDraft.personType,
-                      teamRole: profileDraft.teamRole.trim(),
                       notes: profileDraft.notes.trim(),
-                      attendanceUpdates: profileDraft.attendanceUpdates.trim(),
                       shoeSize: profileDraft.shoeSize,
-                      shoeStatus: profileDraft.shoeStatus,
                       tshirtSize: profileDraft.tshirtSize,
-                      oldTshirtSize: profileDraft.oldTshirtSize,
                       shirtReceivedDate: profileDraft.shirtReceivedDate,
+                      dateFirstJoined: profileDraft.personType === "cityteam_client" ? profileDraft.dateFirstJoined : "",
+                      demoShoesReceivedDate: profileDraft.demoShoesReceivedDate,
+                      newShoesReceivedDate: profileDraft.newShoesReceivedDate,
                     });
                     setIsEditingProfile(false);
                   } catch (error) {
@@ -1793,14 +1774,14 @@ function ProfileCard({
           <section>
             <h4>Memory Notes</h4>
             <p>{runner.notes || "No notes yet."}</p>
-            {runner.attendanceUpdates && <p className="muted">{runner.attendanceUpdates}</p>}
           </section>
 
           <section>
             <h4>Gear</h4>
           <div className="gear-grid">
             <span>Shoe {runner.shoeSize || "?"}</span>
-            <span>{shoeStatusLabels[runner.shoeStatus ?? (runner.demoShoes ? "demo_shoes" : "no_shoes")]}</span>
+            <span>{runner.demoShoesReceivedDate ? `Demo received ${formatShortDate(runner.demoShoesReceivedDate)}` : "Demo shoes pending"}</span>
+            <span>{runner.newShoesReceivedDate ? `New received ${formatShortDate(runner.newShoesReceivedDate)}` : "New shoes pending"}</span>
             <span>Shirt {runner.tshirtSize || "?"}</span>
             <span>{runner.shirtReceivedDate ? `Received ${formatShortDate(runner.shirtReceivedDate)}` : "Shirt pending"}</span>
           </div>
@@ -2559,32 +2540,6 @@ function UpcomingRunsSection({
   );
 }
 
-function GearSection({ state }: { state: AppState }) {
-  return (
-    <section className="content-section">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Sizes and supplies</p>
-          <h3>Gear</h3>
-        </div>
-      </div>
-      <div className="table-list">
-        {state.runners.map((runner) => (
-          <article key={runner.id} className="table-row gear-row">
-            <span>
-              <strong>{runnerName(runner)}</strong>
-              <small>{statusLabels[normalizeRunnerStatus(runner.status)]}</small>
-            </span>
-            <span>Shoe {runner.shoeSize || "?"}</span>
-            <span>Shirt {runner.tshirtSize || "?"}</span>
-            <span>{shoeStatusLabels[runner.shoeStatus ?? (runner.demoShoes ? "demo_shoes" : "no_shoes")]}</span>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function SettingsSection() {
   return (
     <section className="content-section">
@@ -2602,7 +2557,7 @@ function SettingsSection() {
         </p>
         <p>
           Until those values are configured, the app runs in demo mode so the check-in flow,
-          profiles, runs, and gear views can be reviewed safely.
+          profiles and runs can be reviewed safely.
         </p>
         <p>
           Optional: set <code>NEXT_PUBLIC_RUN_CLUB_ADMINS</code> to a comma-separated list like{" "}
@@ -2613,6 +2568,10 @@ function SettingsSection() {
           Upcoming Runs needs the <code>upcoming_runs</code> and{" "}
           <code>upcoming_run_volunteers</code> tables. Run the SQL in{" "}
           <code>supabase-upcoming-runs.sql</code> in Supabase before using this section live.
+        </p>
+        <p>
+          Profile shoe and join dates need the columns in{" "}
+          <code>supabase-profile-fields.sql</code>.
         </p>
       </div>
     </section>
