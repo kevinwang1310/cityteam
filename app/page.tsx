@@ -1412,7 +1412,7 @@ export default function Home() {
                         <small>
                           <span className="inline-type">{personTypeLabels[runner.personType]}</span>
                           {" | "}
-                          {runner.notes || "Runner"} | {countAttendance(state, runner.id)} runs | Last seen {lastSeen(state, runner.id)}
+                          {runner.notes || "Runner"} | {countAttendance(state, runner.id)} runs | Last run {lastSeen(state, runner.id)}
                         </small>
                       </span>
                     </button>
@@ -1595,12 +1595,8 @@ function ProfileCard({
 
       <div className="profile-stats">
         <span><strong>{countAttendance(state, runner.id)}</strong> Runs</span>
-        {runner.personType === "cityteam_client" ? (
-          <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
-        ) : (
-          <span><strong>{countVolunteered(state, runner.id)}</strong> Volunteer</span>
-        )}
-        <span><strong>{lastSeen(state, runner.id)}</strong> Last seen</span>
+        <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
+        <span><strong>{lastSeen(state, runner.id)}</strong> Last run</span>
       </div>
 
       {isEditingProfile ? (
