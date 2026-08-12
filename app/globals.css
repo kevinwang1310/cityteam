@@ -177,8 +177,10 @@ a.nav-item {
 
 .toolbar input,
 .new-runner-form input,
+.upcoming-run-form input,
 .profile-editor input,
 .profile-editor select,
+.snack-select select,
 .profile-select select,
 .gear-editor select {
   min-height: 44px;
@@ -192,8 +194,10 @@ a.nav-item {
 
 .toolbar input:focus,
 .new-runner-form input:focus,
+.upcoming-run-form input:focus,
 .profile-editor input:focus,
 .profile-editor select:focus,
+.snack-select select:focus,
 .profile-select select:focus,
 .gear-editor select:focus {
   border-color: var(--navy-2);
@@ -1235,6 +1239,133 @@ a.nav-item {
   overflow-wrap: anywhere;
 }
 
+.upcoming-run-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.upcoming-run-form label,
+.snack-select {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.upcoming-run-form input,
+.snack-select select {
+  width: 100%;
+  color: var(--ink);
+  text-transform: none;
+}
+
+.upcoming-run-list {
+  display: grid;
+  gap: 12px;
+}
+
+.upcoming-run-card,
+.empty-state {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.upcoming-run-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.upcoming-run-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+}
+
+.upcoming-run-head strong,
+.upcoming-run-head small,
+.volunteer-rsvp strong,
+.volunteer-rsvp small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.upcoming-run-head strong {
+  color: var(--navy);
+  font-size: 1.12rem;
+}
+
+.upcoming-run-head small,
+.volunteer-rsvp small {
+  color: var(--muted);
+}
+
+.volunteer-rsvp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.volunteer-rsvp {
+  min-width: 0;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface-strong);
+}
+
+.volunteer-rsvp.checked {
+  border-color: rgba(36, 120, 95, 0.38);
+  background: #f2faf5;
+}
+
+.volunteer-rsvp input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.volunteer-rsvp .avatar {
+  width: 42px;
+  height: 42px;
+}
+
+.upcoming-run-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state strong {
+  color: var(--navy);
+}
+
 .gear-row {
   grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(94px, 0.4fr));
 }
@@ -1347,6 +1478,7 @@ code {
 
   .toolbar,
   .new-runner-form,
+  .upcoming-run-form,
   .profile-editor,
   .runner-row,
   .row-actions,
@@ -1362,6 +1494,8 @@ code {
   .delete-confirmation,
   .delete-confirmation div,
   .danger-actions,
+  .upcoming-run-head,
+  .upcoming-run-actions,
   .run-row-actions {
     display: grid;
   }

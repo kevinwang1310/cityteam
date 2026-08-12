@@ -6,7 +6,7 @@ type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
-type Section = "checkin" | "people" | "runs" | "gear" | "settings";
+type Section = "checkin" | "people" | "runs" | "upcoming" | "gear" | "settings";
 
 type Runner = {
   id: string;
@@ -44,10 +44,26 @@ type Attendance = {
   checkedInBy?: string;
 };
 
+type UpcomingRun = {
+  id: string;
+  date: string;
+  title: string;
+  snackRunnerId?: string;
+};
+
+type UpcomingRunVolunteer = {
+  id: string;
+  upcomingRunId: string;
+  runnerId: string;
+  attending: boolean;
+};
+
 type AppState = {
   runners: Runner[];
   runs: Run[];
   attendance: Attendance[];
+  upcomingRuns: UpcomingRun[];
+  upcomingRunVolunteers: UpcomingRunVolunteer[];
   admins: string[];
   syncedAt?: string;
 };
@@ -91,6 +107,20 @@ type SupabaseAttendanceRow = {
 type SupabaseAdminRow = {
   display_name: string;
   is_active: boolean;
+};
+
+type SupabaseUpcomingRunRow = {
+  id: string;
+  run_date: string;
+  title: string;
+  snack_runner_id: string | null;
+};
+
+type SupabaseUpcomingRunVolunteerRow = {
+  id: string;
+  upcoming_run_id: string;
+  runner_id: string;
+  attending: boolean;
 };
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
@@ -303,12 +333,35 @@ const demoState: AppState = {
     attended: true,
     wasVolunteer: index % 11 === 0,
   })),
+  upcomingRuns: [
+    {
+      id: "upcoming-2026-08-15",
+      date: "2026-08-15",
+      title: "Aug 15 Run",
+      snackRunnerId: "daniel-peake",
+    },
+  ],
+  upcomingRunVolunteers: [
+    {
+      id: "upcoming-2026-08-15-daniel-peake",
+      upcomingRunId: "upcoming-2026-08-15",
+      runnerId: "daniel-peake",
+      attending: true,
+    },
+    {
+      id: "upcoming-2026-08-15-will-wells",
+      upcomingRunId: "upcoming-2026-08-15",
+      runnerId: "will-wells",
+      attending: true,
+    },
+  ],
 };
 
 const sections: { id: Section; label: string }[] = [
   { id: "checkin", label: "Check In" },
   { id: "people", label: "People" },
-  { id: "runs", label: "Runs" },
+  { id: "runs", label: "Trends" },
+  { id: "upcoming", label: "Upcoming Runs" },
   { id: "gear", label: "Gear" },
 ];
 
@@ -322,6 +375,15 @@ function formatShortDate(date: string) {
 
 function todayId() {
   return `run-${todayDate()}`;
+}
+
+function nextSaturdayDate(from = new Date()) {
+  const current = new Date(from);
+  current.setHours(12, 0, 0, 0);
+  const day = current.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7 || 7;
+  current.setDate(current.getDate() + daysUntilSaturday);
+  return dateInRunClubTimeZone(current);
 }
 
 function isSaturdayRunDate(date: string) {
@@ -500,11 +562,51 @@ function toAttendanceRow(attendance: Attendance): SupabaseAttendanceRow {
   };
 }
 
+function fromUpcomingRunRow(row: SupabaseUpcomingRunRow): UpcomingRun {
+  return {
+    id: row.id,
+    date: row.run_date,
+    title: row.title,
+    snackRunnerId: row.snack_runner_id ?? undefined,
+  };
+}
+
+function toUpcomingRunRow(run: UpcomingRun): SupabaseUpcomingRunRow {
+  return {
+    id: run.id,
+    run_date: run.date,
+    title: run.title,
+    snack_runner_id: run.snackRunnerId || null,
+  };
+}
+
+function fromUpcomingRunVolunteerRow(row: SupabaseUpcomingRunVolunteerRow): UpcomingRunVolunteer {
+  return {
+    id: row.id,
+    upcomingRunId: row.upcoming_run_id,
+    runnerId: row.runner_id,
+    attending: row.attending,
+  };
+}
+
+function toUpcomingRunVolunteerRow(volunteer: UpcomingRunVolunteer): SupabaseUpcomingRunVolunteerRow {
+  return {
+    id: volunteer.id,
+    upcoming_run_id: volunteer.upcomingRunId,
+    runner_id: volunteer.runnerId,
+    attending: volunteer.attending,
+  };
+}
+
 async function loadSupabaseState(): Promise<AppState> {
-  const [runners, runs, attendance, admins] = await Promise.all([
+  const [runners, runs, attendance, upcomingRuns, upcomingRunVolunteers, admins] = await Promise.all([
     supabaseRequest<SupabaseRunnerRow[]>("runners?select=*&order=status.asc,first_name.asc,last_name.asc"),
     supabaseRequest<SupabaseRunRow[]>("runs?select=*&order=run_date.asc"),
     supabaseRequest<SupabaseAttendanceRow[]>("attendance?select=*&order=created_at.asc"),
+    supabaseRequest<SupabaseUpcomingRunRow[]>("upcoming_runs?select=*&order=run_date.asc")
+      .catch(() => []),
+    supabaseRequest<SupabaseUpcomingRunVolunteerRow[]>("upcoming_run_volunteers?select=*&order=created_at.asc")
+      .catch(() => []),
     supabaseRequest<SupabaseAdminRow[]>("admins?select=display_name,is_active&is_active=eq.true&order=display_name.asc")
       .catch(() => []),
   ]);
@@ -513,6 +615,8 @@ async function loadSupabaseState(): Promise<AppState> {
     runners: runners.map(fromRunnerRow),
     runs: runs.map(fromRunRow),
     attendance: attendance.map(fromAttendanceRow),
+    upcomingRuns: upcomingRuns.map(fromUpcomingRunRow),
+    upcomingRunVolunteers: upcomingRunVolunteers.map(fromUpcomingRunVolunteerRow),
     admins: admins.length ? admins.map((admin) => admin.display_name) : configuredAdmins,
     syncedAt: new Date().toISOString(),
   };
@@ -550,7 +654,38 @@ async function deleteRunnerRecords(runnerId: string) {
     method: "DELETE",
     prefer: "return=minimal",
   });
+  await supabaseRequest<void>(`upcoming_run_volunteers?runner_id=eq.${encodeURIComponent(runnerId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  }).catch(() => undefined);
   await supabaseRequest<void>(`runners?id=eq.${encodeURIComponent(runnerId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  });
+}
+
+async function upsertUpcomingRun(run: UpcomingRun) {
+  return supabaseRequest<SupabaseUpcomingRunRow[]>("upcoming_runs?on_conflict=id", {
+    method: "POST",
+    prefer: "resolution=merge-duplicates,return=representation",
+    body: JSON.stringify(toUpcomingRunRow(run)),
+  });
+}
+
+async function upsertUpcomingRunVolunteer(volunteer: UpcomingRunVolunteer) {
+  return supabaseRequest<SupabaseUpcomingRunVolunteerRow[]>("upcoming_run_volunteers?on_conflict=upcoming_run_id,runner_id", {
+    method: "POST",
+    prefer: "resolution=merge-duplicates,return=representation",
+    body: JSON.stringify(toUpcomingRunVolunteerRow(volunteer)),
+  });
+}
+
+async function deleteUpcomingRunRecords(runId: string) {
+  await supabaseRequest<void>(`upcoming_run_volunteers?upcoming_run_id=eq.${encodeURIComponent(runId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  });
+  await supabaseRequest<void>(`upcoming_runs?id=eq.${encodeURIComponent(runId)}`, {
     method: "DELETE",
     prefer: "return=minimal",
   });
@@ -815,6 +950,109 @@ export default function Home() {
     }
   }
 
+  async function createUpcomingRun(date: string) {
+    if (!date) return;
+    const run: UpcomingRun = {
+      id: `upcoming-${date}`,
+      date,
+      title: `${formatShortDate(date)} Run`,
+    };
+
+    setState((current) => ({
+      ...current,
+      upcomingRuns: current.upcomingRuns.some((candidate) => candidate.id === run.id)
+        ? current.upcomingRuns.map((candidate) => (candidate.id === run.id ? run : candidate))
+        : [...current.upcomingRuns, run],
+    }));
+
+    if (hasSupabaseConfig()) {
+      try {
+        await upsertUpcomingRun(run);
+        setConnectionState("connected");
+        setMessage(`${run.title} added to upcoming runs.`);
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Upcoming run saved locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function updateUpcomingVolunteer(upcomingRunId: string, runnerId: string, attending: boolean) {
+    const volunteer: UpcomingRunVolunteer = {
+      id: `${upcomingRunId}-${runnerId}`,
+      upcomingRunId,
+      runnerId,
+      attending,
+    };
+
+    setState((current) => {
+      const existing = current.upcomingRunVolunteers.find(
+        (item) => item.upcomingRunId === upcomingRunId && item.runnerId === runnerId,
+      );
+      return {
+        ...current,
+        upcomingRunVolunteers: existing
+          ? current.upcomingRunVolunteers.map((item) => (item.id === existing.id ? volunteer : item))
+          : [...current.upcomingRunVolunteers, volunteer],
+      };
+    });
+
+    if (hasSupabaseConfig()) {
+      try {
+        await upsertUpcomingRunVolunteer(volunteer);
+        setConnectionState("connected");
+        setMessage("Upcoming run RSVP saved.");
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "RSVP saved locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function updateUpcomingSnackVolunteer(upcomingRunId: string, runnerId: string) {
+    const currentRun = state.upcomingRuns.find((run) => run.id === upcomingRunId);
+    if (!currentRun) return;
+    const nextRun = { ...currentRun, snackRunnerId: runnerId || undefined };
+
+    setState((current) => ({
+      ...current,
+      upcomingRuns: current.upcomingRuns.map((run) => (run.id === upcomingRunId ? nextRun : run)),
+    }));
+
+    if (hasSupabaseConfig()) {
+      try {
+        await upsertUpcomingRun(nextRun);
+        setConnectionState("connected");
+        setMessage("Snack volunteer saved.");
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Snack volunteer saved locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function deleteUpcomingRun(upcomingRunId: string) {
+    const run = state.upcomingRuns.find((candidate) => candidate.id === upcomingRunId);
+    if (!run) return;
+
+    setState((current) => ({
+      ...current,
+      upcomingRuns: current.upcomingRuns.filter((candidate) => candidate.id !== upcomingRunId),
+      upcomingRunVolunteers: current.upcomingRunVolunteers.filter((item) => item.upcomingRunId !== upcomingRunId),
+    }));
+
+    if (hasSupabaseConfig()) {
+      try {
+        await deleteUpcomingRunRecords(upcomingRunId);
+        setConnectionState("connected");
+        setMessage(`${run.title} removed from upcoming runs.`);
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Upcoming run deleted locally, but Supabase did not update.");
+      }
+    }
+  }
+
   async function deleteRunner(runnerId: string) {
     const runner = state.runners.find((candidate) => candidate.id === runnerId);
     if (!runner) return;
@@ -824,6 +1062,10 @@ export default function Home() {
       ...current,
       runners: current.runners.filter((candidate) => candidate.id !== runnerId),
       attendance: current.attendance.filter((item) => item.runnerId !== runnerId),
+      upcomingRuns: current.upcomingRuns.map((run) =>
+        run.snackRunnerId === runnerId ? { ...run, snackRunnerId: undefined } : run,
+      ),
+      upcomingRunVolunteers: current.upcomingRunVolunteers.filter((item) => item.runnerId !== runnerId),
     }));
     setSelectedRunnerId(remainingRunners[0]?.id ?? "");
     setMobileProfileOpen(false);
@@ -1166,6 +1408,15 @@ export default function Home() {
 
         {section === "people" && <PeopleSection state={state} selectRunner={(id) => { openRunnerProfile(id); setSection("checkin"); }} />}
         {section === "runs" && <RunsSection state={state} onToggleAttendance={updateRunAttendance} onDeleteRun={deleteRun} />}
+        {section === "upcoming" && (
+          <UpcomingRunsSection
+            state={state}
+            onCreateRun={createUpcomingRun}
+            onToggleVolunteer={updateUpcomingVolunteer}
+            onSetSnackVolunteer={updateUpcomingSnackVolunteer}
+            onDeleteRun={deleteUpcomingRun}
+          />
+        )}
         {section === "gear" && <GearSection state={state} />}
         {section === "settings" && <SettingsSection />}
       </section>
@@ -1950,7 +2201,7 @@ function RunsSection({
       <div className="section-heading">
         <div>
           <p className="eyebrow">Attendance history</p>
-          <h3>Runs</h3>
+          <h3>Trends</h3>
         </div>
       </div>
       <AttendanceTrendChart state={state} />
@@ -2045,6 +2296,144 @@ function RunsSection({
   );
 }
 
+function UpcomingRunsSection({
+  state,
+  onCreateRun,
+  onToggleVolunteer,
+  onSetSnackVolunteer,
+  onDeleteRun,
+}: {
+  state: AppState;
+  onCreateRun: (date: string) => Promise<void>;
+  onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean) => Promise<void>;
+  onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
+  onDeleteRun: (upcomingRunId: string) => Promise<void>;
+}) {
+  const [runDate, setRunDate] = useState(nextSaturdayDate());
+  const [savingDate, setSavingDate] = useState(false);
+  const activeVolunteers = state.runners
+    .filter((runner) => runner.personType === "volunteer" && normalizeRunnerStatus(runner.status) === "active")
+    .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
+  const upcomingRuns = state.upcomingRuns
+    .filter((run) => run.date >= todayDate())
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return (
+    <section className="content-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Planning</p>
+          <h3>Upcoming Runs</h3>
+        </div>
+        <div className="section-counts" aria-label="Upcoming run summary">
+          <span><strong>{upcomingRuns.length}</strong> scheduled</span>
+          <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
+        </div>
+      </div>
+
+      <div className="upcoming-run-form">
+        <label>
+          <span>Run date</span>
+          <input
+            type="date"
+            value={runDate}
+            onChange={(event) => setRunDate(event.target.value)}
+          />
+        </label>
+        <button
+          className="primary-action"
+          disabled={!runDate || savingDate}
+          onClick={async () => {
+            setSavingDate(true);
+            try {
+              await onCreateRun(runDate);
+              setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
+            } finally {
+              setSavingDate(false);
+            }
+          }}
+        >
+          {savingDate ? "Saving..." : "Add Run Date"}
+        </button>
+      </div>
+
+      <div className="upcoming-run-list">
+        {upcomingRuns.length ? (
+          upcomingRuns.map((run) => {
+            const volunteerRecords = state.upcomingRunVolunteers.filter(
+              (item) => item.upcomingRunId === run.id && item.attending,
+            );
+            const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
+            return (
+              <article key={run.id} className="upcoming-run-card">
+                <div className="upcoming-run-head">
+                  <span>
+                    <strong>{run.title}</strong>
+                    <small>{formatShortDate(run.date)}</small>
+                  </span>
+                  <div className="summary-pills">
+                    <span>{volunteerRecords.length} attending</span>
+                    <span>{snackVolunteer ? `${runnerName(snackVolunteer)} snacks` : "Snacks open"}</span>
+                  </div>
+                </div>
+
+                <label className="snack-select">
+                  <span>Snack volunteer</span>
+                  <select
+                    value={run.snackRunnerId ?? ""}
+                    onChange={(event) => onSetSnackVolunteer(run.id, event.target.value)}
+                  >
+                    <option value="">No one yet</option>
+                    {activeVolunteers.map((volunteer) => (
+                      <option key={volunteer.id} value={volunteer.id}>
+                        {runnerName(volunteer)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="volunteer-rsvp-grid" aria-label={`Volunteer RSVPs for ${run.title}`}>
+                  {activeVolunteers.map((volunteer) => {
+                    const attending = state.upcomingRunVolunteers.some(
+                      (item) => item.upcomingRunId === run.id && item.runnerId === volunteer.id && item.attending,
+                    );
+                    return (
+                      <label key={volunteer.id} className={attending ? "volunteer-rsvp checked" : "volunteer-rsvp"}>
+                        <input
+                          type="checkbox"
+                          checked={attending}
+                          onChange={(event) => onToggleVolunteer(run.id, volunteer.id, event.target.checked)}
+                        />
+                        <Avatar runner={volunteer} />
+                        <span>
+                          <strong>{runnerName(volunteer)}</strong>
+                          <small>{attending ? "Attending" : "Not marked"}</small>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="upcoming-run-actions">
+                  <button className="danger-action" onClick={() => onDeleteRun(run.id)}>
+                    Delete Upcoming Run
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="empty-state">
+            <strong>No upcoming runs yet</strong>
+            <span>Add the next Saturday run date to start collecting volunteer RSVPs.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function GearSection({ state }: { state: AppState }) {
   return (
     <section className="content-section">
@@ -2094,6 +2483,11 @@ function SettingsSection() {
           Optional: set <code>NEXT_PUBLIC_RUN_CLUB_ADMINS</code> to a comma-separated list like{" "}
           <code>Kevin,Saturday lead</code>. If the Supabase <code>admins</code> table has active
           rows, those names are used instead.
+        </p>
+        <p>
+          Upcoming Runs needs the <code>upcoming_runs</code> and{" "}
+          <code>upcoming_run_volunteers</code> tables. Run the SQL in{" "}
+          <code>supabase-upcoming-runs.sql</code> in Supabase before using this section live.
         </p>
       </div>
     </section>
