@@ -1285,7 +1285,6 @@ export default function Home() {
         <div className="brand-lockup">
           <img className="brand-logo" src="/cityteamlogo.svg" alt="CityTeam" />
           <div>
-            <p className="eyebrow">Run Club</p>
             <h1>Run Club</h1>
           </div>
         </div>
