@@ -2225,6 +2225,7 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
 
 function AttendanceLeaderboard({ state }: { state: AppState }) {
   const leaders = state.runners
+    .filter((runner) => runner.personType === "cityteam_client" && normalizeRunnerStatus(runner.status) === "active")
     .map((runner) => ({
       runner,
       runsAttended: countAttendance(state, runner.id),
@@ -2232,12 +2233,11 @@ function AttendanceLeaderboard({ state }: { state: AppState }) {
     .filter((entry) => entry.runsAttended > 0)
     .sort((a, b) => b.runsAttended - a.runsAttended || runnerName(a.runner).localeCompare(runnerName(b.runner)))
     .slice(0, 10);
-  const topCount = Math.max(1, ...leaders.map((entry) => entry.runsAttended));
 
   if (!leaders.length) {
     return (
       <div className="leaderboard-card empty">
-        <p>No attendance yet.</p>
+        <p>No active CityTeam client attendance yet.</p>
       </div>
     );
   }
@@ -2247,22 +2247,32 @@ function AttendanceLeaderboard({ state }: { state: AppState }) {
       <div className="leaderboard-head">
         <div>
           <p className="eyebrow">Leaderboard</p>
-          <h4>Best Attendance</h4>
+          <h4>Active CityTeam Clients</h4>
         </div>
-        <span className="shoe-key"><span aria-hidden="true">👟</span> 4 runs earns new shoes</span>
+        <span className="shoe-key"><span aria-hidden="true">✨👟</span> Fourth run earns new shoes</span>
       </div>
       <div className="leaderboard-list">
         {leaders.map(({ runner, runsAttended }, index) => {
           const earnedShoes = runsAttended >= 4;
+          const shoeRuns = Array.from({ length: runsAttended }, (_, runIndex) => runIndex + 1);
           return (
             <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
               <span className="leaderboard-rank">{index + 1}</span>
               <Avatar runner={runner} />
               <div className="leaderboard-person">
                 <strong>{runnerName(runner)}</strong>
-                <small>{personTypeLabels[runner.personType]}</small>
-                <div className="leaderboard-meter" aria-hidden="true">
-                  <span style={{ width: `${Math.max(8, (runsAttended / topCount) * 100)}%` }} />
+                <small>Active CityTeam Client</small>
+                <div className="shoe-run-chart" aria-label={`${runnerName(runner)} has attended ${runsAttended} runs`}>
+                  {shoeRuns.map((runNumber) => (
+                    <span
+                      key={runNumber}
+                      className={runNumber === 4 ? "shoe-run earned" : "shoe-run"}
+                      title={runNumber === 4 ? "Fourth run: New shoes earned" : `Run ${runNumber}`}
+                      aria-label={runNumber === 4 ? "Fourth run: New shoes earned" : `Run ${runNumber}`}
+                    >
+                      <span aria-hidden="true">{runNumber === 4 ? "✨👟" : "👟"}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
               <div className="leaderboard-score">
@@ -2271,7 +2281,7 @@ function AttendanceLeaderboard({ state }: { state: AppState }) {
               </div>
               {earnedShoes && (
                 <span className="shoe-earned-pill">
-                  <span aria-hidden="true">👟</span>
+                  <span aria-hidden="true">✨👟</span>
                   New Shoes earned
                 </span>
               )}
