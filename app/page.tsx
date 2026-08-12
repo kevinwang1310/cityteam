@@ -1658,59 +1658,61 @@ function ProfileCard({
               <strong className="read-only-field">{personTypeLabels[runner.personType]}</strong>
             )}
           </label>
-          <div className="profile-editor-section">
-            <span>Shoes</span>
-          </div>
-          <label>
-            <span>Shoe size</span>
-            {isEditingProfile ? (
-              <select
-                value={profileDraft.shoeSize}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, shoeSize: event.target.value }))}
-              >
-                {shoeSizeOptions.map((size) => (
-                  <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
-                ))}
-              </select>
-            ) : (
-              <strong className="read-only-field">{runner.shoeSize || "Unknown"}</strong>
-            )}
-          </label>
-          <label>
-            <span>Demo shoes received</span>
-            {isEditingProfile ? (
-              <input
-                type="date"
-                value={profileDraft.demoShoesReceivedDate}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, demoShoesReceivedDate: event.target.value }))}
-              />
-            ) : (
-              <strong className="read-only-field">
-                {runner.demoShoesReceivedDate ? formatShortDate(runner.demoShoesReceivedDate) : "Not received"}
-              </strong>
-            )}
-          </label>
-          <label>
-            <span>New shoes received</span>
-            {isEditingProfile ? (
-              <input
-                type="date"
-                value={profileDraft.newShoesReceivedDate}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, newShoesReceivedDate: event.target.value }))}
-              />
-            ) : (
-              <strong className="read-only-field">
-                {runner.newShoesReceivedDate ? formatShortDate(runner.newShoesReceivedDate) : "Not received"}
-              </strong>
-            )}
-          </label>
           {canEarnNewShoes && (
-            <label>
-              <span>Shoe milestone</span>
-              <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
-                {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
-              </strong>
-            </label>
+            <>
+              <div className="profile-editor-section">
+                <span>Shoes</span>
+              </div>
+              <label>
+                <span>Shoe size</span>
+                {isEditingProfile ? (
+                  <select
+                    value={profileDraft.shoeSize}
+                    onChange={(event) => setProfileDraft((current) => ({ ...current, shoeSize: event.target.value }))}
+                  >
+                    {shoeSizeOptions.map((size) => (
+                      <option key={size || "blank"} value={size}>{size || "Unknown"}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <strong className="read-only-field">{runner.shoeSize || "Unknown"}</strong>
+                )}
+              </label>
+              <label>
+                <span>Demo shoes received</span>
+                {isEditingProfile ? (
+                  <input
+                    type="date"
+                    value={profileDraft.demoShoesReceivedDate}
+                    onChange={(event) => setProfileDraft((current) => ({ ...current, demoShoesReceivedDate: event.target.value }))}
+                  />
+                ) : (
+                  <strong className="read-only-field">
+                    {runner.demoShoesReceivedDate ? formatShortDate(runner.demoShoesReceivedDate) : "Not received"}
+                  </strong>
+                )}
+              </label>
+              <label>
+                <span>New shoes received</span>
+                {isEditingProfile ? (
+                  <input
+                    type="date"
+                    value={profileDraft.newShoesReceivedDate}
+                    onChange={(event) => setProfileDraft((current) => ({ ...current, newShoesReceivedDate: event.target.value }))}
+                  />
+                ) : (
+                  <strong className="read-only-field">
+                    {runner.newShoesReceivedDate ? formatShortDate(runner.newShoesReceivedDate) : "Not received"}
+                  </strong>
+                )}
+              </label>
+              <label>
+                <span>Shoe milestone</span>
+                <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
+                  {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
+                </strong>
+              </label>
+            </>
           )}
           <div className="profile-editor-section">
             <span>Shirt</span>
