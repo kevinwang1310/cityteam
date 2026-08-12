@@ -2236,8 +2236,10 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
 }
 
 function AttendanceLeaderboard({ state }: { state: AppState }) {
+  const [leaderboardScope, setLeaderboardScope] = useState<"active" | "all">("active");
   const leaders = state.runners
-    .filter((runner) => runner.personType === "cityteam_client" && normalizeRunnerStatus(runner.status) === "active")
+    .filter((runner) => runner.personType === "cityteam_client")
+    .filter((runner) => leaderboardScope === "all" || normalizeRunnerStatus(runner.status) === "active")
     .map((runner) => ({
       runner,
       runsAttended: countAttendance(state, runner.id),
@@ -2246,61 +2248,109 @@ function AttendanceLeaderboard({ state }: { state: AppState }) {
     .sort((a, b) => b.runsAttended - a.runsAttended || runnerName(a.runner).localeCompare(runnerName(b.runner)))
     .slice(0, 10);
 
-  if (!leaders.length) {
-    return (
-      <div className="leaderboard-card empty">
-        <p>No active CityTeam client attendance yet.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="leaderboard-card">
       <div className="leaderboard-head">
         <div>
           <p className="eyebrow">Leaderboard</p>
-          <h4>Active CityTeam Clients</h4>
+          <h4>{leaderboardScope === "active" ? "Active CityTeam Clients" : "All CityTeam Clients"}</h4>
         </div>
-        <span className="shoe-key"><span aria-hidden="true">✨👟</span> Fourth run earns new shoes</span>
+        <div className="leaderboard-tools">
+          <div className="leaderboard-toggle" aria-label="Leaderboard scope">
+            <button
+              className={leaderboardScope === "active" ? "active" : ""}
+              onClick={() => setLeaderboardScope("active")}
+            >
+              Active
+            </button>
+            <button
+              className={leaderboardScope === "all" ? "active" : ""}
+              onClick={() => setLeaderboardScope("all")}
+            >
+              All CityTeam Clients
+            </button>
+          </div>
+          <span className="shirt-key"><span aria-hidden="true">👕</span> Second run earns T-shirt</span>
+          <span className="shoe-key"><span aria-hidden="true">✨👟</span> Fourth run earns new shoes</span>
+        </div>
       </div>
-      <div className="leaderboard-list">
-        {leaders.map(({ runner, runsAttended }, index) => {
-          const earnedShoes = runsAttended >= 4;
-          const shoeRuns = Array.from({ length: runsAttended }, (_, runIndex) => runIndex + 1);
-          return (
-            <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
-              <span className="leaderboard-rank">{index + 1}</span>
-              <Avatar runner={runner} />
-              <div className="leaderboard-person">
-                <strong>{runnerName(runner)}</strong>
-                <small>Active CityTeam Client</small>
-                <div className="shoe-run-chart" aria-label={`${runnerName(runner)} has attended ${runsAttended} runs`}>
-                  {shoeRuns.map((runNumber) => (
-                    <span
-                      key={runNumber}
-                      className={runNumber === 4 ? "shoe-run earned" : "shoe-run"}
-                      title={runNumber === 4 ? "Fourth run: New shoes earned" : `Run ${runNumber}`}
-                      aria-label={runNumber === 4 ? "Fourth run: New shoes earned" : `Run ${runNumber}`}
-                    >
-                      <span aria-hidden="true">{runNumber === 4 ? "✨👟" : "👟"}</span>
-                    </span>
-                  ))}
+      {leaders.length ? (
+        <div className="leaderboard-list">
+          {leaders.map(({ runner, runsAttended }, index) => {
+            const earnedShirt = runsAttended >= 2;
+            const earnedShoes = runsAttended >= 4;
+            const receivedShirt = Boolean(runner.shirtReceivedDate);
+            const receivedShoes = Boolean(runner.newShoesReceivedDate);
+            const shoeRuns = Array.from({ length: runsAttended }, (_, runIndex) => runIndex + 1);
+            return (
+              <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
+                <span className="leaderboard-rank">{index + 1}</span>
+                <Avatar runner={runner} />
+                <div className="leaderboard-person">
+                  <strong>{runnerName(runner)}</strong>
+                  <small>{statusLabels[normalizeRunnerStatus(runner.status)]} CityTeam Client</small>
+                  <div className="shoe-run-chart" aria-label={`${runnerName(runner)} has attended ${runsAttended} runs`}>
+                    {shoeRuns.map((runNumber) => (
+                      <span
+                        key={runNumber}
+                        className={runNumber === 4 ? "shoe-run earned" : runNumber === 2 ? "shoe-run shirt-earned" : "shoe-run"}
+                        title={
+                          runNumber === 4
+                            ? "Fourth run: New shoes earned"
+                            : runNumber === 2
+                              ? "Second run: T-shirt earned"
+                              : `Run ${runNumber}`
+                        }
+                        aria-label={
+                          runNumber === 4
+                            ? "Fourth run: New shoes earned"
+                            : runNumber === 2
+                              ? "Second run: T-shirt earned"
+                              : `Run ${runNumber}`
+                        }
+                      >
+                        <span aria-hidden="true">{runNumber === 4 ? "✨👟" : runNumber === 2 ? "👕" : "👟"}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="leaderboard-score">
-                <strong>{runsAttended}</strong>
-                <small>{runsAttended === 1 ? "run" : "runs"}</small>
-              </div>
-              {earnedShoes && (
-                <span className="shoe-earned-pill">
-                  <span aria-hidden="true">✨👟</span>
-                  New Shoes earned
-                </span>
-              )}
-            </article>
-          );
-        })}
-      </div>
+                <div className="leaderboard-score">
+                  <strong>{runsAttended}</strong>
+                  <small>{runsAttended === 1 ? "run" : "runs"}</small>
+                </div>
+                {(earnedShirt || earnedShoes) && (
+                  <div className="leaderboard-awards">
+                    {earnedShirt && (
+                      <span
+                        className={receivedShirt ? "shirt-earned-pill received" : "shirt-earned-pill"}
+                        title={receivedShirt && runner.shirtReceivedDate ? `Received ${formatShortDate(runner.shirtReceivedDate)}` : "T-shirt earned"}
+                      >
+                        <span aria-hidden="true">👕</span>
+                        {receivedShirt ? "T-shirt received" : "T-shirt earned"}
+                      </span>
+                    )}
+                    {earnedShoes && (
+                      <span
+                        className={receivedShoes ? "shoe-earned-pill received" : "shoe-earned-pill"}
+                        title={receivedShoes && runner.newShoesReceivedDate ? `Received ${formatShortDate(runner.newShoesReceivedDate)}` : "New shoes earned"}
+                      >
+                        <span aria-hidden="true">✨👟</span>
+                        {receivedShoes ? "New shoes received" : "New Shoes earned"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="leaderboard-empty">
+          <p>
+            No {leaderboardScope === "active" ? "active " : ""}CityTeam client attendance yet.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

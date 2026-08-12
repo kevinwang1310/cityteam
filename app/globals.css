@@ -57,6 +57,82 @@ button {
   min-height: 100vh;
 }
 
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+}
+
+.login-card {
+  width: min(100%, 430px);
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.login-logo {
+  width: 150px;
+  height: auto;
+}
+
+.login-card h1 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.8rem;
+  letter-spacing: 0;
+}
+
+.login-copy,
+.login-error {
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.login-copy {
+  color: var(--muted);
+}
+
+.login-error {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.login-form input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 12px;
+  outline: none;
+  text-transform: none;
+}
+
+.login-form input:focus {
+  border-color: var(--navy-2);
+  box-shadow: 0 0 0 3px rgba(21, 62, 93, 0.14);
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -1224,15 +1300,45 @@ a.nav-item {
   font-size: 1.22rem;
 }
 
+.leaderboard-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.leaderboard-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.leaderboard-toggle button {
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.leaderboard-toggle button.active {
+  background: var(--navy);
+  color: #fff;
+}
+
+.shirt-key,
 .shoe-key,
+.shirt-earned-pill,
 .shoe-earned-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid rgba(36, 111, 71, 0.22);
   border-radius: 999px;
-  background: rgba(36, 111, 71, 0.08);
-  color: #246f47;
   font-size: 0.8rem;
   font-weight: 900;
   line-height: 1.2;
@@ -1240,9 +1346,49 @@ a.nav-item {
   white-space: nowrap;
 }
 
+.shoe-key,
+.shoe-earned-pill {
+  border: 1px solid rgba(36, 111, 71, 0.22);
+  background: rgba(36, 111, 71, 0.08);
+  color: #246f47;
+}
+
+.shirt-key,
+.shirt-earned-pill {
+  border: 1px solid rgba(43, 104, 156, 0.24);
+  background: rgba(43, 104, 156, 0.09);
+  color: #2b689c;
+}
+
+.shirt-earned-pill.received {
+  border-color: rgba(43, 104, 156, 0.42);
+  background: #2b689c;
+  color: #fff;
+}
+
+.shoe-earned-pill.received {
+  border-color: rgba(36, 111, 71, 0.42);
+  background: #246f47;
+  color: #fff;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 8px;
+}
+
+.leaderboard-empty {
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.leaderboard-empty p {
+  margin: 0;
 }
 
 .leaderboard-row {
@@ -1300,6 +1446,13 @@ a.nav-item {
   line-height: 1;
 }
 
+.leaderboard-awards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .shoe-run-chart {
   display: flex;
   flex-wrap: wrap;
@@ -1325,6 +1478,12 @@ a.nav-item {
   border-color: rgba(200, 155, 60, 0.5);
   background: linear-gradient(135deg, rgba(255, 244, 196, 0.95), rgba(36, 111, 71, 0.11));
   box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.12);
+}
+
+.shoe-run.shirt-earned {
+  border-color: rgba(43, 104, 156, 0.45);
+  background: linear-gradient(135deg, rgba(227, 241, 255, 0.96), rgba(43, 104, 156, 0.13));
+  box-shadow: 0 0 0 3px rgba(43, 104, 156, 0.1);
 }
 
 .table-row {
@@ -1709,6 +1868,10 @@ code {
     justify-content: flex-start;
   }
 
+  .leaderboard-tools {
+    justify-content: flex-start;
+  }
+
   .section-counts {
     justify-content: flex-start;
   }
@@ -1717,12 +1880,18 @@ code {
     grid-template-columns: 30px 44px minmax(0, 1fr) minmax(52px, auto);
   }
 
-  .shoe-earned-pill {
+  .leaderboard-awards {
     grid-column: 3 / -1;
     justify-self: start;
+    justify-content: flex-start;
+  }
+
+  .shirt-earned-pill,
+  .shoe-earned-pill {
     white-space: normal;
   }
 
+  .shirt-key,
   .shoe-key {
     align-self: flex-start;
     white-space: normal;
