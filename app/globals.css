@@ -463,7 +463,7 @@ a.nav-item {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  padding: 18px;
+  padding: 14px;
 }
 
 .mobile-profile-bar {
@@ -472,12 +472,13 @@ a.nav-item {
 
 .profile-photo-card {
   display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
+  justify-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .profile-photo-large {
-  width: 100%;
+  width: min(42%, 150px);
   aspect-ratio: 1;
   border-radius: 8px;
   object-fit: cover;
@@ -489,7 +490,7 @@ a.nav-item {
   display: grid;
   place-items: center;
   border: 2px solid rgba(11, 42, 66, 0.12);
-  font-size: clamp(3rem, 12vw, 5.5rem);
+  font-size: clamp(1.45rem, 4vw, 2.4rem);
   font-weight: 900;
 }
 
@@ -525,7 +526,7 @@ a.nav-item {
 }
 
 .profile-hero h3 {
-  font-size: 1.45rem;
+  font-size: 1.28rem;
   color: var(--navy);
   overflow-wrap: anywhere;
 }
@@ -538,26 +539,26 @@ a.nav-item {
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 18px 0;
+  gap: 6px;
+  margin: 10px 0;
 }
 
 .profile-stats span,
 .gear-grid span {
-  min-height: 58px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
   align-content: center;
-  padding: 9px;
+  padding: 7px;
   background: var(--surface-strong);
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .profile-stats strong {
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 500;
 }
 
@@ -592,14 +593,14 @@ a.nav-item {
 
 .profile-panel section {
   border-top: 1px solid var(--line);
-  padding-top: 15px;
-  margin-top: 15px;
+  padding-top: 10px;
+  margin-top: 10px;
 }
 
 .profile-panel h4 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 0.94rem;
 }
 
 .section-title-row {
@@ -607,7 +608,7 @@ a.nav-item {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .section-title-row h4 {
@@ -677,7 +678,7 @@ a.nav-item {
 .notes-editor,
 .profile-editor {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .profile-editor {
@@ -691,9 +692,9 @@ a.nav-item {
 
 .profile-editor label {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 850;
   text-transform: uppercase;
 }
@@ -706,11 +707,11 @@ a.nav-item {
 }
 
 .profile-editor-section {
-  margin-top: 6px;
-  padding-top: 12px;
+  margin-top: 3px;
+  padding-top: 8px;
   border-top: 1px solid var(--line);
   color: var(--navy);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -732,14 +733,14 @@ a.nav-item {
 .read-only-field {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 34px;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-strong);
   color: var(--ink);
-  padding: 0 12px;
-  font-size: 0.94rem;
+  padding: 0 10px;
+  font-size: 0.88rem;
   font-weight: 400;
   line-height: 1.35;
   text-transform: none;
@@ -753,8 +754,8 @@ a.nav-item {
 
 .notes-read-only {
   align-items: flex-start;
-  min-height: 132px;
-  padding-top: 12px;
+  min-height: 70px;
+  padding-top: 9px;
   white-space: pre-wrap;
 }
 
@@ -762,7 +763,7 @@ a.nav-item {
 .profile-editor textarea,
 .decline-note textarea {
   width: 100%;
-  min-height: 132px;
+  min-height: 96px;
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -824,19 +825,19 @@ a.nav-item {
 .attendance-trend {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .trend-item {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   justify-items: center;
 }
 
 .trend-item span {
   width: 100%;
-  min-height: 34px;
+  min-height: 22px;
   border-radius: 6px;
   border: 1px solid var(--line);
 }
@@ -853,7 +854,7 @@ a.nav-item {
 
 .trend-item small {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 750;
   text-align: center;
   line-height: 1.05;
@@ -862,11 +863,11 @@ a.nav-item {
 .trend-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 10px;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 8px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 750;
 }
 
@@ -1076,6 +1077,10 @@ a.nav-item {
   grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
   gap: 22px;
   align-items: start;
+}
+
+.people-layout .profile-editor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .people-directory-panel {
@@ -1957,6 +1962,7 @@ code {
   .upcoming-run-form,
   .upcoming-title-editor,
   .profile-editor,
+  .people-layout .profile-editor,
   .runner-row,
   .row-actions,
   .table-row {
