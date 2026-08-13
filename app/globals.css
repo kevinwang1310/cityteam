@@ -1663,15 +1663,34 @@ a.nav-item {
   background: var(--surface);
 }
 
-.attendance-edit-row.checked {
+.attendance-edit-row.cityteam-client {
+  border-color: rgba(36, 120, 95, 0.2);
+  background: rgba(36, 120, 95, 0.06);
+}
+
+.attendance-edit-row.volunteer {
+  border-color: rgba(52, 116, 168, 0.22);
+  background: rgba(52, 116, 168, 0.08);
+}
+
+.attendance-edit-row.cityteam-client.checked {
   border-color: rgba(36, 120, 95, 0.38);
   background: #f2faf5;
+}
+
+.attendance-edit-row.volunteer.checked {
+  border-color: rgba(52, 116, 168, 0.4);
+  background: #eef7ff;
 }
 
 .attendance-edit-row input {
   width: 18px;
   height: 18px;
   accent-color: var(--green);
+}
+
+.attendance-edit-row.volunteer input {
+  accent-color: #3474a8;
 }
 
 .attendance-edit-row .avatar {

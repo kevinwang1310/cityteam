@@ -3,6 +3,17 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
+const sourceTruthAttendanceTotals = {
+  "May-2": { clients: 9, volunteers: 8, total: 17 },
+  "May-9": { clients: 6, volunteers: 8, total: 14 },
+  "May-16": { clients: 6, volunteers: 5, total: 11 },
+  "May-23": { clients: 6, volunteers: 6, total: 12 },
+  "Jun-6": { clients: 5, volunteers: 4, total: 9 },
+  "Jun-20": { clients: 4, volunteers: 4, total: 8 },
+  "Jul-11": { clients: 7, volunteers: 5, total: 12 },
+  "Aug-1": { clients: 5, volunteers: 2, total: 7 },
+  "Aug-8": { clients: 12, volunteers: 3, total: 15 },
+};
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -57,6 +68,15 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /\/cityteamlogo\.svg/);
   assert.match(page, /NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(page, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(page, /function attendanceRoleCounts/);
+  assert.match(page, /attendanceCounts\.clients\} runners/);
+  assert.match(page, /attendanceCounts\.volunteers\} volunteers/);
+  assert.match(page, /attendance-edit-row/);
+  assert.match(page, /cityteam-client/);
+  assert.match(page, /volunteer/);
+  assert.match(css, /\.attendance-edit-row\.cityteam-client/);
+  assert.match(css, /\.attendance-edit-row\.volunteer/);
+  assert.doesNotMatch(page, /records\.length\} runners/);
   assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(manifest, /CityTeam Run Club/);
@@ -70,4 +90,17 @@ test("keeps production app files free of starter preview wiring", async () => {
   await assert.rejects(
     access(new URL("app/_sites-preview/SkeletonPreview.tsx", templateRoot)),
   );
+});
+
+test("documents source-of-truth attendance totals from Master rows 39-41", () => {
+  assert.deepEqual(sourceTruthAttendanceTotals["May-2"], { clients: 9, volunteers: 8, total: 17 });
+  assert.deepEqual(sourceTruthAttendanceTotals["Aug-8"], { clients: 12, volunteers: 3, total: 15 });
+
+  for (const [date, counts] of Object.entries(sourceTruthAttendanceTotals)) {
+    assert.equal(
+      counts.clients + counts.volunteers,
+      counts.total,
+      `${date} source-truth client and volunteer counts should sum to total`,
+    );
+  }
 });

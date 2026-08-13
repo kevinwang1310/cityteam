@@ -432,6 +432,21 @@ function countVolunteered(state: AppState, runnerId: string) {
   return state.attendance.filter((item) => item.runnerId === runnerId && item.wasVolunteer).length;
 }
 
+function attendanceRoleCounts(records: Attendance[], runnerById: Map<string, Runner>) {
+  const clients = records.filter(
+    (item) => runnerById.get(item.runnerId)?.personType === "cityteam_client",
+  ).length;
+  const volunteers = records.filter(
+    (item) => runnerById.get(item.runnerId)?.personType === "volunteer",
+  ).length;
+
+  return {
+    clients,
+    volunteers,
+    total: clients + volunteers,
+  };
+}
+
 function lastSeen(state: AppState, runnerId: string) {
   const runDates = state.attendance
     .filter((item) => item.runnerId === runnerId && item.attended)
@@ -2176,18 +2191,13 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
   const runnerById = new Map(state.runners.map((runner) => [runner.id, runner]));
   const points = runs.map((run) => {
     const records = state.attendance.filter((item) => item.runId === run.id && item.attended);
-    const clients = records.filter(
-      (item) => runnerById.get(item.runnerId)?.personType === "cityteam_client",
-    ).length;
-    const volunteers = records.filter(
-      (item) => runnerById.get(item.runnerId)?.personType === "volunteer",
-    ).length;
+    const { clients, volunteers, total } = attendanceRoleCounts(records, runnerById);
 
     return {
       run,
       clients,
       volunteers,
-      total: clients + volunteers,
+      total,
     };
   });
   const width = 920;
@@ -2440,6 +2450,7 @@ function RunsSection({
   const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState("");
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
   const runners = state.runners.slice().sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
+  const runnerById = new Map(state.runners.map((runner) => [runner.id, runner]));
   const sortedRuns = state.runs.slice().sort((a, b) => b.date.localeCompare(a.date));
 
   return (
@@ -2473,6 +2484,7 @@ function RunsSection({
         <div className="table-list">
           {sortedRuns.map((run) => {
             const records = state.attendance.filter((item) => item.runId === run.id && item.attended);
+            const attendanceCounts = attendanceRoleCounts(records, runnerById);
             const isEditing = editingRunId === run.id;
             const isConfirmingDelete = confirmingDeleteRunId === run.id;
             return (
@@ -2482,8 +2494,8 @@ function RunsSection({
                     <strong>{run.title}</strong>
                     <small>{formatShortDate(run.date)}</small>
                   </span>
-                  <span>{records.length} runners</span>
-                  <span>{records.filter((item) => item.wasVolunteer).length} volunteers</span>
+                  <span>{attendanceCounts.clients} runners</span>
+                  <span>{attendanceCounts.volunteers} volunteers</span>
                   <div className="run-row-actions">
                     <button
                       className="text-action"
@@ -2534,7 +2546,14 @@ function RunsSection({
                       );
                       const checked = Boolean(existing?.attended);
                       return (
-                        <label key={runner.id} className={checked ? "attendance-edit-row checked" : "attendance-edit-row"}>
+                        <label
+                          key={runner.id}
+                          className={[
+                            "attendance-edit-row",
+                            runner.personType === "volunteer" ? "volunteer" : "cityteam-client",
+                            checked ? "checked" : "",
+                          ].filter(Boolean).join(" ")}
+                        >
                           <input
                             type="checkbox"
                             checked={checked}
