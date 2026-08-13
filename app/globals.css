@@ -1071,6 +1071,17 @@ a.nav-item {
   margin-bottom: 16px;
 }
 
+.people-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.people-directory-panel {
+  min-width: 0;
+}
+
 .people-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
@@ -1090,9 +1101,15 @@ a.nav-item {
 }
 
 .person-card:hover,
+.person-card.active,
 .runner-row:hover,
 .table-row:hover {
   border-color: rgba(11, 42, 66, 0.25);
+}
+
+.person-card.active {
+  background: #f2faf5;
+  box-shadow: 0 0 0 3px rgba(36, 120, 95, 0.12);
 }
 
 .table-list {
@@ -1875,7 +1892,8 @@ code {
     padding: 0 8px;
   }
 
-  .checkin-layout {
+  .checkin-layout,
+  .people-layout {
     grid-template-columns: 1fr;
   }
 

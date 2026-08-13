@@ -1434,7 +1434,18 @@ export default function Home() {
           </div>
         )}
 
-        {section === "people" && <PeopleSection state={state} selectRunner={(id) => { openRunnerProfile(id); setSection("checkin"); }} />}
+        {section === "people" && (
+          <PeopleSection
+            state={state}
+            selectedRunner={selectedRunner}
+            selectRunner={openRunnerProfile}
+            onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
+            onSaveProfile={saveRunnerProfile}
+            onDeleteProfile={deleteRunner}
+            isMobileOpen={mobileProfileOpen}
+            onCloseMobile={() => setMobileProfileOpen(false)}
+          />
+        )}
         {section === "runs" && (
           <RunsSection
             state={state}
@@ -2050,7 +2061,25 @@ function PhotoCropper({
   );
 }
 
-function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner: (id: string) => void }) {
+function PeopleSection({
+  state,
+  selectedRunner,
+  selectRunner,
+  onEditPhoto,
+  onSaveProfile,
+  onDeleteProfile,
+  isMobileOpen,
+  onCloseMobile,
+}: {
+  state: AppState;
+  selectedRunner?: Runner;
+  selectRunner: (id: string) => void;
+  onEditPhoto: (runner: Runner) => void;
+  onSaveProfile: (runnerId: string, updates: Partial<Runner>) => Promise<void>;
+  onDeleteProfile: (runnerId: string) => Promise<void>;
+  isMobileOpen: boolean;
+  onCloseMobile: () => void;
+}) {
   const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("all");
   const [query, setQuery] = useState("");
@@ -2074,59 +2103,74 @@ function PeopleSection({ state, selectRunner }: { state: AppState; selectRunner:
   ).length;
 
   return (
-    <section className="content-section">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Photo directory</p>
-          <h3>People</h3>
+    <div className="people-layout">
+      <section className="content-section people-directory-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Photo directory</p>
+            <h3>People</h3>
+          </div>
+          <div className="section-counts" aria-label="Active people summary">
+            <span><strong>{activeCityTeamClients}</strong> active CityTeam clients</span>
+            <span><strong>{activeVolunteers}</strong> active volunteers</span>
+          </div>
         </div>
-        <div className="section-counts" aria-label="Active people summary">
-          <span><strong>{activeCityTeamClients}</strong> active CityTeam clients</span>
-          <span><strong>{activeVolunteers}</strong> active volunteers</span>
+        <div className="directory-filters">
+          <div className="toolbar">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name..."
+              aria-label="Search people by name"
+            />
+          </div>
+          <div className="filter-row" aria-label="People status filter">
+            {([...statusOptions, "all"] as const).map((status) => (
+              <button
+                key={status}
+                className={statusFilter === status ? "filter active" : "filter"}
+                onClick={() => setStatusFilter(status)}
+              >
+                {status === "all" ? "All" : statusLabels[status]}
+              </button>
+            ))}
+          </div>
+          <div className="filter-row" aria-label="People type filter">
+            {(["all", "cityteam_client", "volunteer"] as const).map((personType) => (
+              <button
+                key={personType}
+                className={personTypeFilter === personType ? "filter active" : "filter"}
+                onClick={() => setPersonTypeFilter(personType)}
+              >
+                {personType === "all" ? "All Types" : personTypeLabels[personType]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="directory-filters">
-        <div className="toolbar">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name..."
-            aria-label="Search people by name"
-          />
-        </div>
-        <div className="filter-row" aria-label="People status filter">
-          {([...statusOptions, "all"] as const).map((status) => (
+        <div className="people-grid">
+          {visibleRunners.map((runner) => (
             <button
-              key={status}
-              className={statusFilter === status ? "filter active" : "filter"}
-              onClick={() => setStatusFilter(status)}
+              key={runner.id}
+              className={selectedRunner?.id === runner.id ? "person-card active" : "person-card"}
+              onClick={() => selectRunner(runner.id)}
             >
-              {status === "all" ? "All" : statusLabels[status]}
+              <Avatar runner={runner} />
+              <strong>{runnerName(runner)}</strong>
+              <small>{personTypeLabels[runner.personType]} | {statusLabels[normalizeRunnerStatus(runner.status)]} | {countAttendance(state, runner.id)} runs</small>
             </button>
           ))}
         </div>
-        <div className="filter-row" aria-label="People type filter">
-          {(["all", "cityteam_client", "volunteer"] as const).map((personType) => (
-            <button
-              key={personType}
-              className={personTypeFilter === personType ? "filter active" : "filter"}
-              onClick={() => setPersonTypeFilter(personType)}
-            >
-              {personType === "all" ? "All Types" : personTypeLabels[personType]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="people-grid">
-        {visibleRunners.map((runner) => (
-          <button key={runner.id} className="person-card" onClick={() => selectRunner(runner.id)}>
-            <Avatar runner={runner} />
-            <strong>{runnerName(runner)}</strong>
-            <small>{personTypeLabels[runner.personType]} | {statusLabels[normalizeRunnerStatus(runner.status)]} | {countAttendance(state, runner.id)} runs</small>
-          </button>
-        ))}
-      </div>
-    </section>
+      </section>
+      <ProfileCard
+        runner={selectedRunner}
+        state={state}
+        onEditPhoto={onEditPhoto}
+        onSaveProfile={onSaveProfile}
+        onDeleteProfile={onDeleteProfile}
+        isMobileOpen={isMobileOpen}
+        onCloseMobile={onCloseMobile}
+      />
+    </div>
   );
 }
 
