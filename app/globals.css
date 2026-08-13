@@ -593,14 +593,42 @@ a.nav-item {
 
 .profile-panel section {
   border-top: 1px solid var(--line);
-  padding-top: 10px;
-  margin-top: 10px;
+  padding-top: 12px;
+  margin-top: 12px;
 }
 
 .profile-panel h4 {
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--navy);
-  font-size: 0.94rem;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.profile-panel h5 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.profile-section-heading {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(11, 42, 66, 0.1);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(241, 180, 74, 0.17), rgba(255, 255, 255, 0.78));
+}
+
+.profile-section-kicker {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 .section-title-row {
@@ -612,6 +640,10 @@ a.nav-item {
 }
 
 .section-title-row h4 {
+  margin: 0;
+}
+
+.section-title-row h5 {
   margin: 0;
 }
 
@@ -707,19 +739,33 @@ a.nav-item {
 }
 
 .profile-editor-section {
-  margin-top: 3px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(11, 42, 66, 0.1);
+  border-radius: 8px;
+  background: var(--surface-strong);
   color: var(--navy);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.profile-editor-section:first-child {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
+.profile-editor-section::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.history-stats {
+  margin-bottom: 10px;
+}
+
+.recent-runs-heading {
+  margin-top: 4px;
 }
 
 .profile-editor input,

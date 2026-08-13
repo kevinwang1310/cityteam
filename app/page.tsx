@@ -1423,6 +1423,7 @@ export default function Home() {
             </section>
 
             <ProfileCard
+              key={profileCardKey(selectedRunner, mobileProfileOpen)}
               runner={selectedRunner}
               state={state}
               onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
@@ -1488,6 +1489,39 @@ function Avatar({ runner }: { runner: Runner }) {
   return <span className="avatar fallback">{initials(runner)}</span>;
 }
 
+function profileDraftFromRunner(runner?: Runner) {
+  return {
+    firstName: runner?.firstName ?? "",
+    lastName: runner?.lastName ?? "",
+    status: normalizeRunnerStatus(runner?.status ?? "active"),
+    personType: runner?.personType ?? "cityteam_client",
+    notes: runner?.notes ?? "",
+    shoeSize: runner?.shoeSize ?? "",
+    tshirtSize: runner?.tshirtSize ?? "",
+    shirtReceivedDate: runner?.shirtReceivedDate ?? "",
+    demoShoesReceivedDate: runner?.demoShoesReceivedDate ?? "",
+    newShoesReceivedDate: runner?.newShoesReceivedDate ?? "",
+  };
+}
+
+function profileCardKey(runner?: Runner, isMobileOpen = false) {
+  if (!runner) return isMobileOpen ? "empty-open" : "empty-closed";
+  return [
+    runner.id,
+    runner.firstName,
+    runner.lastName,
+    runner.personType,
+    normalizeRunnerStatus(runner.status),
+    runner.notes ?? "",
+    runner.shoeSize ?? "",
+    runner.tshirtSize ?? "",
+    runner.shirtReceivedDate ?? "",
+    runner.demoShoesReceivedDate ?? "",
+    runner.newShoesReceivedDate ?? "",
+    isMobileOpen ? "open" : "closed",
+  ].join("|");
+}
+
 function ProfileCard({
   runner,
   state,
@@ -1509,54 +1543,13 @@ function ProfileCard({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
-  const [profileDraft, setProfileDraft] = useState({
-    firstName: "",
-    lastName: "",
-    status: "active" as RunnerStatus,
-    personType: "cityteam_client" as PersonType,
-    notes: "",
-    shoeSize: "",
-    tshirtSize: "",
-    shirtReceivedDate: "",
-    demoShoesReceivedDate: "",
-    newShoesReceivedDate: "",
-  });
+  const [profileDraft, setProfileDraft] = useState(() => profileDraftFromRunner(runner));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
 
   useEffect(() => {
     panelRef.current?.scrollTo({ top: 0 });
-    setProfileDraft({
-      firstName: runner?.firstName ?? "",
-      lastName: runner?.lastName ?? "",
-      status: normalizeRunnerStatus(runner?.status ?? "active"),
-      personType: runner?.personType ?? "cityteam_client",
-      notes: runner?.notes ?? "",
-      shoeSize: runner?.shoeSize ?? "",
-      tshirtSize: runner?.tshirtSize ?? "",
-      shirtReceivedDate: runner?.shirtReceivedDate ?? "",
-      demoShoesReceivedDate: runner?.demoShoesReceivedDate ?? "",
-      newShoesReceivedDate: runner?.newShoesReceivedDate ?? "",
-    });
-    setIsEditingProfile(false);
-    setIsConfirmingDelete(false);
-    setIsDeletingProfile(false);
-    setIsSavingProfile(false);
-    setProfileError("");
-  }, [
-    runner?.id,
-    runner?.firstName,
-    runner?.lastName,
-    runner?.personType,
-    runner?.status,
-    runner?.notes,
-    runner?.shoeSize,
-    runner?.tshirtSize,
-    runner?.shirtReceivedDate,
-    runner?.demoShoesReceivedDate,
-    runner?.newShoesReceivedDate,
-    isMobileOpen,
-  ]);
+  }, []);
 
   if (!runner) return null;
   const recentRuns = state.runs
@@ -1608,18 +1601,12 @@ function ProfileCard({
         </button>
       </div>
 
-      <div className="profile-stats">
-        <span><strong>{totalRunsAttended}</strong> Runs</span>
-        <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
-        <span><strong>{lastSeen(state, runner.id)}</strong> Last run</span>
-      </div>
-
       <section>
-        <h4>Profile Details</h4>
+        <div className="profile-section-heading">
+          <span className="profile-section-kicker">Profile</span>
+          <h4>Profile Details</h4>
+        </div>
         <div className={isEditingProfile ? "profile-editor" : "profile-editor read-only-profile"}>
-          <div className="profile-editor-section">
-            <span>Profile</span>
-          </div>
           <label>
             <span>First name</span>
             {isEditingProfile ? (
@@ -1782,18 +1769,7 @@ function ProfileCard({
               <button
                 className="secondary-action"
                 onClick={() => {
-                  setProfileDraft({
-                    firstName: runner.firstName,
-                    lastName: runner.lastName,
-                    status: normalizeRunnerStatus(runner.status),
-                    personType: runner.personType,
-                    notes: runner.notes ?? "",
-                    shoeSize: runner.shoeSize ?? "",
-                    tshirtSize: runner.tshirtSize ?? "",
-                    shirtReceivedDate: runner.shirtReceivedDate ?? "",
-                    demoShoesReceivedDate: runner.demoShoesReceivedDate ?? "",
-                    newShoesReceivedDate: runner.newShoesReceivedDate ?? "",
-                  });
+                  setProfileDraft(profileDraftFromRunner(runner));
                   setIsEditingProfile(false);
                   setProfileError("");
                 }}
@@ -1836,8 +1812,17 @@ function ProfileCard({
       </section>
 
       <section>
-        <div className="section-title-row">
-          <h4>Recent Runs</h4>
+        <div className="profile-section-heading">
+          <span className="profile-section-kicker">History</span>
+          <h4>Attendance History</h4>
+        </div>
+        <div className="profile-stats history-stats">
+          <span><strong>{totalRunsAttended}</strong> Runs</span>
+          <span><strong>{automaticFirstJoinedDate ? formatShortDate(automaticFirstJoinedDate) : "Not set"}</strong> First joined</span>
+          <span><strong>{lastSeen(state, runner.id)}</strong> Last run</span>
+        </div>
+        <div className="section-title-row recent-runs-heading">
+          <h5>Recent Runs</h5>
           <span className="trend-summary">
             {recentAttendances}/{recentRunTrend.length} attended
           </span>
@@ -2162,6 +2147,7 @@ function PeopleSection({
         </div>
       </section>
       <ProfileCard
+        key={profileCardKey(selectedRunner, isMobileOpen)}
         runner={selectedRunner}
         state={state}
         onEditPhoto={onEditPhoto}
