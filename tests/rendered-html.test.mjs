@@ -94,6 +94,10 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.person-card\.volunteer/);
   assert.match(css, /\.celebration-person-row\.cityteam-client/);
   assert.match(css, /\.celebration-person-row\.volunteer/);
+  assert.match(css, /#dcfce7/);
+  assert.match(css, /#dbeafe/);
+  assert.match(css, /#16a34a/);
+  assert.match(css, /#2563eb/);
   assert.match(css, /\.celebration-grid/);
   assert.match(css, /\.chart-line\.first-time/);
   assert.match(css, /\.chart-line\.returning/);
