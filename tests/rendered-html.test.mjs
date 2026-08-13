@@ -61,6 +61,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(manifest, /CityTeam Run Club/);
   assert.match(css, /--navy:\s*#0b2a42/);
+  const photoModalZIndex = Number(css.match(/\.photo-modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+  const mobileProfileZIndex = Number(css.match(/\.profile-panel\.mobile-profile-open\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+  assert.ok(photoModalZIndex > mobileProfileZIndex);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page + layout + css, /codex-preview|_sites-preview|SkeletonPreview/i);
 
