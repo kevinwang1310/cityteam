@@ -75,6 +75,13 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /cityteam-client/);
   assert.match(page, /volunteer/);
   assert.match(page, /function roleClassName/);
+  assert.match(page, /useState<PersonType \| "all">\("cityteam_client"\)/);
+  assert.match(page, /checkinProfileRunner \? "checkin-layout profile-open" : "checkin-layout"/);
+  assert.match(page, /checkin-runner-list/);
+  assert.match(page, /Run day milestone/);
+  assert.match(page, /T-shirt earned on this check-in/);
+  assert.match(page, /New shoes earned on this check-in/);
+  assert.match(page, /New record streak/);
   assert.match(page, /runnerName\(a\)\.localeCompare\(runnerName\(b\)\)/);
   assert.doesNotMatch(page, /Number\(isCheckedIn\(b\.id\)\)/);
   assert.match(page, /function ClientRetentionTrendChart/);
@@ -97,6 +104,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.attendance-edit-row\.volunteer/);
   assert.match(css, /\.runner-row\.cityteam-client/);
   assert.match(css, /\.runner-row\.volunteer/);
+  assert.match(css, /\.checkin-runner-list/);
+  assert.match(css, /\.celebration-dialog/);
   assert.match(css, /\.person-card\.cityteam-client/);
   assert.match(css, /\.person-card\.volunteer/);
   assert.match(css, /\.celebration-person-row\.cityteam-client/);

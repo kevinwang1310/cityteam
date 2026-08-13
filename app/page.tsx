@@ -60,6 +60,11 @@ type UpcomingRunVolunteer = {
   note?: string;
 };
 
+type CheckinCelebration = {
+  runnerName: string;
+  messages: string[];
+};
+
 type AppState = {
   runners: Runner[];
   runs: Run[];
@@ -477,6 +482,23 @@ function currentRunStreak(state: AppState, runnerId: string, runs = sortedRunsBy
   return streak;
 }
 
+function bestRunStreak(state: AppState, runnerId: string, runs = sortedRunsByDate(state)) {
+  const attended = attendedRunIds(state, runnerId);
+  let best = 0;
+  let current = 0;
+
+  for (const run of runs) {
+    if (attended.has(run.id)) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 0;
+    }
+  }
+
+  return best;
+}
+
 function attendanceCountThroughRun(state: AppState, runnerId: string, runId: string, runs = sortedRunsByDate(state)) {
   const attended = attendedRunIds(state, runnerId);
   const runIndex = runs.findIndex((run) => run.id === runId);
@@ -823,8 +845,10 @@ export default function Home() {
   const [section, setSection] = useState<Section>("checkin");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
-  const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("all");
+  const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [selectedRunnerId, setSelectedRunnerId] = useState<string>(demoState.runners[1].id);
+  const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
+  const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
   const [todayRunId, setTodayRunId] = useState(todayId());
   const [connectionState, setConnectionState] = useState<"demo" | "loading" | "connected" | "error">(
     hasSupabaseConfig() ? "loading" : "demo",
@@ -899,6 +923,7 @@ export default function Home() {
 
   function openRunnerProfile(runnerId: string) {
     setSelectedRunnerId(runnerId);
+    setCheckinProfileRunnerId(runnerId);
     setMobileProfileOpen(true);
   }
 
@@ -915,6 +940,9 @@ export default function Home() {
       firstTimers,
     };
   }, [state, todayAttendance]);
+  const checkinProfileRunner = checkinProfileRunnerId
+    ? state.runners.find((runner) => runner.id === checkinProfileRunnerId)
+    : undefined;
 
   function isCheckedIn(runnerId: string) {
     return state.attendance.some((item) => item.runnerId === runnerId && item.runId === todayRunId && item.attended);
@@ -927,23 +955,43 @@ export default function Home() {
     }
 
     const existing = state.attendance.find((item) => item.runnerId === runnerId && item.runId === todayRunId);
+    const runner = state.runners.find((candidate) => candidate.id === runnerId);
+    const wasAlreadyCheckedIn = Boolean(existing?.attended);
     const next: Attendance = {
       id: existing?.id ?? `att-${runnerId}-${todayRunId}`,
       runnerId,
       runId: todayRunId,
       attended: updates.attended ?? existing?.attended ?? false,
-      wasVolunteer: updates.wasVolunteer ?? existing?.wasVolunteer ?? false,
+      wasVolunteer: updates.wasVolunteer ?? existing?.wasVolunteer ?? runner?.personType === "volunteer",
       note: updates.note ?? existing?.note,
       checkedInBy: adminName,
     };
-
-    setState((current) => ({
-      ...current,
-      runs: current.runs.some((run) => run.id === todayRunId) ? current.runs : [...current.runs, todayRun],
+    const nextState: AppState = {
+      ...state,
+      runs: state.runs.some((run) => run.id === todayRunId) ? state.runs : [...state.runs, todayRun],
       attendance: existing
-        ? current.attendance.map((item) => (item.id === existing.id ? next : item))
-        : [...current.attendance, next],
-    }));
+        ? state.attendance.map((item) => (item.id === existing.id ? next : item))
+        : [...state.attendance, next],
+    };
+
+    setState(nextState);
+
+    if (runner?.personType === "cityteam_client" && next.attended && !wasAlreadyCheckedIn) {
+      const runs = sortedRunsByDate(nextState);
+      const totalRunsBefore = countAttendance(state, runner.id);
+      const totalRunsAfter = countAttendance(nextState, runner.id);
+      const bestStreakBefore = bestRunStreak(state, runner.id);
+      const streakAfter = currentRunStreak(nextState, runner.id, runs);
+      const messages = [
+        totalRunsBefore < 2 && totalRunsAfter >= 2 ? "T-shirt earned on this check-in." : "",
+        totalRunsBefore < 4 && totalRunsAfter >= 4 ? "New shoes earned on this check-in." : "",
+        streakAfter > 1 && streakAfter > bestStreakBefore ? `New record streak: ${streakAfter} runs in a row.` : "",
+      ].filter(Boolean);
+
+      if (messages.length) {
+        setCheckinCelebration({ runnerName: runnerName(runner), messages });
+      }
+    }
 
     if (hasSupabaseConfig()) {
       try {
@@ -1349,6 +1397,7 @@ export default function Home() {
               onClick={() => {
                 setSection(item.id);
                 setMobileProfileOpen(false);
+                if (item.id !== "checkin") setCheckinProfileRunnerId(null);
               }}
             >
               {item.label}
@@ -1368,7 +1417,7 @@ export default function Home() {
 
       <section className="workspace">
         {section === "checkin" && (
-          <div className="checkin-layout">
+          <div className={checkinProfileRunner ? "checkin-layout profile-open" : "checkin-layout"}>
             <section className="run-panel">
               <div className="run-summary">
                 <div>
@@ -1446,7 +1495,7 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="runner-list">
+              <div className="runner-list checkin-runner-list">
                 {filteredRunners.map((runner) => (
                   <article
                     key={runner.id}
@@ -1477,16 +1526,21 @@ export default function Home() {
               </div>
             </section>
 
-            <ProfileCard
-              key={profileCardKey(selectedRunner, mobileProfileOpen)}
-              runner={selectedRunner}
-              state={state}
-              onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
-              onSaveProfile={saveRunnerProfile}
-              onDeleteProfile={deleteRunner}
-              isMobileOpen={mobileProfileOpen}
-              onCloseMobile={() => setMobileProfileOpen(false)}
-            />
+            {checkinProfileRunner && (
+              <ProfileCard
+                key={profileCardKey(checkinProfileRunner, mobileProfileOpen)}
+                runner={checkinProfileRunner}
+                state={state}
+                onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
+                onSaveProfile={saveRunnerProfile}
+                onDeleteProfile={deleteRunner}
+                isMobileOpen={mobileProfileOpen}
+                onCloseMobile={() => {
+                  setMobileProfileOpen(false);
+                  setCheckinProfileRunnerId(null);
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -1541,6 +1595,24 @@ export default function Home() {
           onCancel={() => setPhotoEditorRunner(null)}
           onSave={(photoUrl) => saveRunnerPhoto(photoEditorRunner.id, photoUrl)}
         />
+      )}
+      {checkinCelebration && (
+        <div className="celebration-dialog-backdrop" role="dialog" aria-modal="true" aria-label={`Milestones for ${checkinCelebration.runnerName}`}>
+          <section className="celebration-dialog">
+            <div>
+              <p className="eyebrow">Run day milestone</p>
+              <h3>{checkinCelebration.runnerName}</h3>
+            </div>
+            <ul>
+              {checkinCelebration.messages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+            <button className="primary-action" onClick={() => setCheckinCelebration(null)}>
+              Got it
+            </button>
+          </section>
+        </div>
       )}
     </main>
   );

@@ -246,9 +246,13 @@ a.nav-item {
 
 .checkin-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
+}
+
+.checkin-layout.profile-open {
+  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .run-panel,
@@ -370,6 +374,10 @@ a.nav-item {
   display: grid;
   gap: 10px;
   margin-top: 16px;
+}
+
+.checkin-runner-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .runner-row {
@@ -997,6 +1005,52 @@ a.nav-item {
   place-items: center;
   padding: 20px;
   background: rgba(11, 42, 66, 0.55);
+}
+
+.celebration-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(11, 42, 66, 0.46);
+}
+
+.celebration-dialog {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(200, 155, 60, 0.34);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.celebration-dialog h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.35rem;
+}
+
+.celebration-dialog ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.celebration-dialog li {
+  border: 1px solid rgba(200, 155, 60, 0.24);
+  border-left: 5px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(200, 155, 60, 0.1);
+  color: var(--navy);
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 10px 12px;
 }
 
 .photo-modal {
@@ -2160,6 +2214,7 @@ code {
   }
 
   .checkin-layout,
+  .checkin-layout.profile-open,
   .people-layout {
     grid-template-columns: 1fr;
   }
@@ -2267,6 +2322,7 @@ code {
 
   .profile-stats,
   .celebration-grid,
+  .checkin-runner-list,
   .gear-grid {
     grid-template-columns: 1fr;
   }
