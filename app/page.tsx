@@ -1667,7 +1667,6 @@ function ProfileCard({
 
       <section>
         <div className="profile-section-heading">
-          <span className="profile-section-kicker">Profile</span>
           <h4>Profile Details</h4>
         </div>
         <div className={isEditingProfile ? "profile-editor" : "profile-editor read-only-profile"}>
@@ -1780,7 +1779,7 @@ function ProfileCard({
             </>
           )}
           <div className="profile-editor-section">
-            <span>Shirt</span>
+            <span>Shirts</span>
           </div>
           <label>
             <span>Shirt size</span>
@@ -1877,7 +1876,6 @@ function ProfileCard({
 
       <section>
         <div className="profile-section-heading">
-          <span className="profile-section-kicker">History</span>
           <h4>Attendance History</h4>
         </div>
         <div className="profile-stats history-stats">
