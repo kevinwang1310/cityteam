@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
-type Section = "checkin" | "people" | "runs" | "upcoming" | "settings";
+type Section = "checkin" | "people" | "celebration" | "runs" | "upcoming" | "settings";
 
 type Runner = {
   id: string;
@@ -357,6 +358,7 @@ const demoState: AppState = {
 const sections: { id: Section; label: string }[] = [
   { id: "checkin", label: "Check In" },
   { id: "people", label: "People" },
+  { id: "celebration", label: "Celebration" },
   { id: "runs", label: "Trends" },
   { id: "upcoming", label: "Upcoming Runs" },
 ];
@@ -445,6 +447,37 @@ function attendanceRoleCounts(records: Attendance[], runnerById: Map<string, Run
     volunteers,
     total: clients + volunteers,
   };
+}
+
+function sortedRunsByDate(state: AppState) {
+  return state.runs.slice().sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function attendedRunIds(state: AppState, runnerId: string) {
+  return new Set(
+    state.attendance
+      .filter((item) => item.runnerId === runnerId && item.attended)
+      .map((item) => item.runId),
+  );
+}
+
+function currentRunStreak(state: AppState, runnerId: string, runs = sortedRunsByDate(state)) {
+  const attended = attendedRunIds(state, runnerId);
+  let streak = 0;
+
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    if (!attended.has(runs[index].id)) break;
+    streak += 1;
+  }
+
+  return streak;
+}
+
+function attendanceCountThroughRun(state: AppState, runnerId: string, runId: string, runs = sortedRunsByDate(state)) {
+  const attended = attendedRunIds(state, runnerId);
+  const runIndex = runs.findIndex((run) => run.id === runId);
+  if (runIndex < 0 || !attended.has(runId)) return 0;
+  return runs.slice(0, runIndex + 1).filter((run) => attended.has(run.id)).length;
 }
 
 function lastSeen(state: AppState, runnerId: string) {
@@ -1462,6 +1495,15 @@ export default function Home() {
             onCloseMobile={() => setMobileProfileOpen(false)}
           />
         )}
+        {section === "celebration" && (
+          <RunDayCelebrationSection
+            state={state}
+            onOpenProfile={(runnerId) => {
+              openRunnerProfile(runnerId);
+              setSection("checkin");
+            }}
+          />
+        )}
         {section === "runs" && (
           <RunsSection
             state={state}
@@ -2183,6 +2225,183 @@ function PeopleSection({
         onCloseMobile={onCloseMobile}
       />
     </div>
+  );
+}
+
+function CelebrationPersonRow({
+  runner,
+  detail,
+  metric,
+  onOpenProfile,
+}: {
+  runner: Runner;
+  detail: string;
+  metric?: string;
+  onOpenProfile: (runnerId: string) => void;
+}) {
+  return (
+    <button className="celebration-person-row" onClick={() => onOpenProfile(runner.id)}>
+      <Avatar runner={runner} />
+      <span>
+        <strong>{runnerName(runner)}</strong>
+        <small>{detail}</small>
+      </span>
+      {metric && <em>{metric}</em>}
+    </button>
+  );
+}
+
+function CelebrationList({
+  title,
+  subtitle,
+  empty,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  empty: string;
+  children: ReactNode;
+}) {
+  const childCount = Array.isArray(children) ? children.length : children ? 1 : 0;
+
+  return (
+    <article className="celebration-card">
+      <div className="celebration-card-head">
+        <div>
+          <h4>{title}</h4>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+      {childCount ? <div className="celebration-list">{children}</div> : <div className="celebration-empty">{empty}</div>}
+    </article>
+  );
+}
+
+function RunDayCelebrationSection({
+  state,
+  onOpenProfile,
+}: {
+  state: AppState;
+  onOpenProfile: (runnerId: string) => void;
+}) {
+  const runs = sortedRunsByDate(state);
+  const latestRun = runs[runs.length - 1];
+  const previousRun = runs[runs.length - 2];
+  const cityTeamClients = state.runners.filter((runner) => runner.personType === "cityteam_client");
+  const latestAttendance = latestRun
+    ? state.attendance.filter((item) => item.runId === latestRun.id && item.attended)
+    : [];
+  const latestAttendeeIds = new Set(latestAttendance.map((item) => item.runnerId));
+  const previousAttendeeIds = new Set(
+    previousRun
+      ? state.attendance
+          .filter((item) => item.runId === previousRun.id && item.attended)
+          .map((item) => item.runnerId)
+      : [],
+  );
+  const topStreaks = cityTeamClients
+    .map((runner) => ({
+      runner,
+      streak: currentRunStreak(state, runner.id, runs),
+      runsAttended: countAttendance(state, runner.id),
+    }))
+    .filter((item) => item.streak > 0)
+    .sort((a, b) => b.streak - a.streak || b.runsAttended - a.runsAttended || runnerName(a.runner).localeCompare(runnerName(b.runner)))
+    .slice(0, 5);
+  const latestClientAttendees = cityTeamClients.filter((runner) => latestAttendeeIds.has(runner.id));
+  const shoeEarners = latestRun
+    ? latestClientAttendees.filter((runner) => attendanceCountThroughRun(state, runner.id, latestRun.id, runs) === 4)
+    : [];
+  const shirtEarners = latestRun
+    ? latestClientAttendees.filter((runner) => attendanceCountThroughRun(state, runner.id, latestRun.id, runs) === 2)
+    : [];
+  const comebacks = latestRun
+    ? latestClientAttendees.filter((runner) => {
+        if (!previousRun || previousAttendeeIds.has(runner.id)) return false;
+        return runs
+          .filter((run) => run.date < latestRun.date)
+          .some((run) =>
+            state.attendance.some((item) => item.runnerId === runner.id && item.runId === run.id && item.attended),
+          );
+      })
+    : [];
+
+  return (
+    <section className="content-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Latest run</p>
+          <h3>Run Day Celebration</h3>
+          <small>{latestRun ? `${latestRun.title} | ${formatShortDate(latestRun.date)}` : "No saved runs yet"}</small>
+        </div>
+      </div>
+
+      <div className="celebration-grid">
+        <CelebrationList
+          title="Top 5 Streaks"
+          subtitle="CityTeam clients with the longest current run-day streaks."
+          empty="No active CityTeam client streaks yet."
+        >
+          {topStreaks.map(({ runner, streak }) => (
+            <CelebrationPersonRow
+              key={runner.id}
+              runner={runner}
+              detail={`${countAttendance(state, runner.id)} total runs`}
+              metric={`${streak} in a row`}
+              onOpenProfile={onOpenProfile}
+            />
+          ))}
+        </CelebrationList>
+
+        <CelebrationList
+          title="Shoes Earned"
+          subtitle="CityTeam clients whose fourth run was the latest run."
+          empty="No new shoe milestones on the latest run."
+        >
+          {shoeEarners.map((runner) => (
+            <CelebrationPersonRow
+              key={runner.id}
+              runner={runner}
+              detail="Fourth run milestone"
+              metric="Shoes"
+              onOpenProfile={onOpenProfile}
+            />
+          ))}
+        </CelebrationList>
+
+        <CelebrationList
+          title="T-Shirts Earned"
+          subtitle="CityTeam clients whose second run was the latest run."
+          empty="No new T-shirt milestones on the latest run."
+        >
+          {shirtEarners.map((runner) => (
+            <CelebrationPersonRow
+              key={runner.id}
+              runner={runner}
+              detail="Second run milestone"
+              metric="T-shirt"
+              onOpenProfile={onOpenProfile}
+            />
+          ))}
+        </CelebrationList>
+
+        <CelebrationList
+          title="Comebacks"
+          subtitle="CityTeam clients who returned on the latest run after missing the prior run."
+          empty="No comebacks on the latest run."
+        >
+          {comebacks.map((runner) => (
+            <CelebrationPersonRow
+              key={runner.id}
+              runner={runner}
+              detail={previousRun ? `Missed ${formatShortDate(previousRun.date)}, back ${formatShortDate(latestRun.date)}` : "Back at the latest run"}
+              metric="Back"
+              onOpenProfile={onOpenProfile}
+            />
+          ))}
+        </CelebrationList>
+      </div>
+    </section>
   );
 }
 
