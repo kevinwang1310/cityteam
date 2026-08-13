@@ -1725,7 +1725,7 @@ function ProfileCard({
           {canEarnNewShoes && (
             <>
               <div className="profile-editor-section">
-                <span>Shoes</span>
+                <span className="profile-section-label shoes">Shoes</span>
               </div>
               <label>
                 <span>Shoe size</span>
@@ -1779,7 +1779,7 @@ function ProfileCard({
             </>
           )}
           <div className="profile-editor-section">
-            <span>Shirts</span>
+            <span className="profile-section-label shirts">Shirts</span>
           </div>
           <label>
             <span>Shirt size</span>
@@ -1811,7 +1811,7 @@ function ProfileCard({
             )}
           </label>
           <div className="profile-editor-section">
-            <span>Notes</span>
+            <span className="profile-section-label notes">Notes</span>
           </div>
           <label className="wide-field">
             <span>Memory notes</span>
