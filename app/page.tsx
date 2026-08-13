@@ -2303,8 +2303,8 @@ function AttendanceLeaderboard({
                 <span className="leaderboard-rank">{index + 1}</span>
                 <button
                   className="leaderboard-profile-trigger avatar-trigger"
-                  onDoubleClick={() => onOpenProfile(runner.id)}
-                  title={`Double-click to open ${runnerName(runner)}'s profile`}
+                  onClick={() => onOpenProfile(runner.id)}
+                  title={`Open ${runnerName(runner)}'s profile`}
                   aria-label={`Open ${runnerName(runner)} profile`}
                 >
                   <Avatar runner={runner} />
@@ -2312,8 +2312,8 @@ function AttendanceLeaderboard({
                 <div className="leaderboard-person">
                   <button
                     className="leaderboard-profile-trigger name-trigger"
-                    onDoubleClick={() => onOpenProfile(runner.id)}
-                    title={`Double-click to open ${runnerName(runner)}'s profile`}
+                    onClick={() => onOpenProfile(runner.id)}
+                    title={`Open ${runnerName(runner)}'s profile`}
                   >
                     {runnerName(runner)}
                   </button>
