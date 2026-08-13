@@ -977,7 +977,7 @@ a.nav-item {
 }
 
 .crop-preview {
-  width: min(360px, 100%);
+  width: min(420px, 100%);
   aspect-ratio: 1;
   margin: 0 auto;
   border: 1px solid var(--line);
@@ -997,6 +997,8 @@ a.nav-item {
 .crop-actions {
   margin: 14px 0 4px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: center;
 }
 

@@ -182,8 +182,8 @@ const shoeStatusLabels: Record<ShoeStatus, string> = {
   new_and_demo_shoes: "New & Demo shoes",
 };
 
-const profilePhotoMaxPixels = 2048;
-const profilePhotoQuality = 0.96;
+const profilePhotoMaxPixels = 3072;
+const profilePhotoQuality = 0.97;
 const runClubTimeZone = "America/Los_Angeles";
 
 const demoState: AppState = {
@@ -1896,6 +1896,7 @@ function PhotoCropper({
   onSave: (photoUrl: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [source, setSource] = useState("");
   const [zoom, setZoom] = useState(1.25);
   const [x, setX] = useState(50);
@@ -1994,8 +1995,18 @@ function PhotoCropper({
             accept="image/*"
             onChange={(event) => handleFile(event.target.files?.[0])}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => handleFile(event.target.files?.[0])}
+          />
+          <button className="primary-action" onClick={() => cameraInputRef.current?.click()}>
+            Take Photo
+          </button>
           <button className="secondary-action" onClick={() => fileInputRef.current?.click()}>
-            Upload Image
+            Choose Photo
           </button>
         </div>
 
