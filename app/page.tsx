@@ -426,6 +426,10 @@ function initials(runner: Runner) {
   return `${runner.firstName[0] ?? ""}${runner.lastName[0] ?? ""}`.toUpperCase();
 }
 
+function roleClassName(runner: Pick<Runner, "personType">) {
+  return runner.personType === "volunteer" ? "volunteer" : "cityteam-client";
+}
+
 function countAttendance(state: AppState, runnerId: string) {
   return state.attendance.filter((item) => item.runnerId === runnerId && item.attended).length;
 }
@@ -888,8 +892,8 @@ export default function Home() {
           .toLowerCase()
           .includes(clean);
       })
-      .sort((a, b) => Number(isCheckedIn(b.id)) - Number(isCheckedIn(a.id)) || runnerName(a).localeCompare(runnerName(b)));
-  }, [query, state.runners, statusFilter, personTypeFilter, state.attendance, todayRunId]);
+      .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
+  }, [query, state.runners, statusFilter, personTypeFilter]);
 
   const selectedRunner = state.runners.find((runner) => runner.id === selectedRunnerId) ?? state.runners[0];
 
@@ -1444,7 +1448,10 @@ export default function Home() {
 
               <div className="runner-list">
                 {filteredRunners.map((runner) => (
-                  <article key={runner.id} className={isCheckedIn(runner.id) ? "runner-row checked" : "runner-row"}>
+                  <article
+                    key={runner.id}
+                    className={["runner-row", roleClassName(runner), isCheckedIn(runner.id) ? "checked" : ""].filter(Boolean).join(" ")}
+                  >
                     <button className="runner-main" onClick={() => openRunnerProfile(runner.id)}>
                       <Avatar runner={runner} />
                       <span>
@@ -2204,7 +2211,7 @@ function PeopleSection({
           {visibleRunners.map((runner) => (
             <button
               key={runner.id}
-              className={selectedRunner?.id === runner.id ? "person-card active" : "person-card"}
+              className={["person-card", roleClassName(runner), selectedRunner?.id === runner.id ? "active" : ""].filter(Boolean).join(" ")}
               onClick={() => selectRunner(runner.id)}
             >
               <Avatar runner={runner} />
@@ -2240,7 +2247,7 @@ function CelebrationPersonRow({
   onOpenProfile: (runnerId: string) => void;
 }) {
   return (
-    <button className="celebration-person-row" onClick={() => onOpenProfile(runner.id)}>
+    <button className={["celebration-person-row", roleClassName(runner)].join(" ")} onClick={() => onOpenProfile(runner.id)}>
       <Avatar runner={runner} />
       <span>
         <strong>{runnerName(runner)}</strong>
@@ -2681,7 +2688,7 @@ function AttendanceLeaderboard({
             const receivedShoes = Boolean(runner.newShoesReceivedDate);
             const shoeRuns = Array.from({ length: runsAttended }, (_, runIndex) => runIndex + 1);
             return (
-              <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
+              <article key={runner.id} className={["leaderboard-row", roleClassName(runner), earnedShoes ? "earned" : ""].filter(Boolean).join(" ")}>
                 <span className="leaderboard-rank">{index + 1}</span>
                 <button
                   className="leaderboard-profile-trigger avatar-trigger"
@@ -2882,7 +2889,7 @@ function RunsSection({
                           key={runner.id}
                           className={[
                             "attendance-edit-row",
-                            runner.personType === "volunteer" ? "volunteer" : "cityteam-client",
+                            roleClassName(runner),
                             checked ? "checked" : "",
                           ].filter(Boolean).join(" ")}
                         >

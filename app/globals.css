@@ -383,9 +383,32 @@ a.nav-item {
   background: var(--surface);
 }
 
-.runner-row.checked {
+.runner-row.cityteam-client,
+.person-card.cityteam-client,
+.leaderboard-row.cityteam-client,
+.celebration-person-row.cityteam-client,
+.attendance-edit-row.cityteam-client {
+  border-color: rgba(36, 120, 95, 0.2);
+  background: rgba(36, 120, 95, 0.06);
+}
+
+.runner-row.volunteer,
+.person-card.volunteer,
+.leaderboard-row.volunteer,
+.celebration-person-row.volunteer,
+.attendance-edit-row.volunteer {
+  border-color: rgba(52, 116, 168, 0.22);
+  background: rgba(52, 116, 168, 0.08);
+}
+
+.runner-row.cityteam-client.checked {
   border-color: rgba(36, 120, 95, 0.38);
   background: #f2faf5;
+}
+
+.runner-row.volunteer.checked {
+  border-color: rgba(52, 116, 168, 0.4);
+  background: #eef7ff;
 }
 
 .runner-main {
@@ -1160,9 +1183,14 @@ a.nav-item {
   border-color: rgba(11, 42, 66, 0.25);
 }
 
-.person-card.active {
+.person-card.cityteam-client.active {
   background: #f2faf5;
   box-shadow: 0 0 0 3px rgba(36, 120, 95, 0.12);
+}
+
+.person-card.volunteer.active {
+  background: #eef7ff;
+  box-shadow: 0 0 0 3px rgba(52, 116, 168, 0.12);
 }
 
 .table-list {
@@ -1510,7 +1538,7 @@ a.nav-item {
   padding: 10px;
 }
 
-.leaderboard-row.earned {
+.leaderboard-row.cityteam-client.earned {
   border-color: rgba(36, 111, 71, 0.28);
   background: linear-gradient(90deg, rgba(36, 111, 71, 0.08), var(--surface-strong) 48%);
 }
@@ -1805,16 +1833,6 @@ a.nav-item {
   border-radius: 8px;
   padding: 8px;
   background: var(--surface);
-}
-
-.attendance-edit-row.cityteam-client {
-  border-color: rgba(36, 120, 95, 0.2);
-  background: rgba(36, 120, 95, 0.06);
-}
-
-.attendance-edit-row.volunteer {
-  border-color: rgba(52, 116, 168, 0.22);
-  background: rgba(52, 116, 168, 0.08);
 }
 
 .attendance-edit-row.cityteam-client.checked {

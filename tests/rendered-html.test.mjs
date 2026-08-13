@@ -74,6 +74,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /attendance-edit-row/);
   assert.match(page, /cityteam-client/);
   assert.match(page, /volunteer/);
+  assert.match(page, /function roleClassName/);
+  assert.match(page, /runnerName\(a\)\.localeCompare\(runnerName\(b\)\)/);
+  assert.doesNotMatch(page, /Number\(isCheckedIn\(b\.id\)\)/);
   assert.match(page, /function ClientRetentionTrendChart/);
   assert.match(page, /First-Time and Returning Runners/);
   assert.match(page, /firstTime/);
@@ -85,6 +88,12 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /Comebacks/);
   assert.match(css, /\.attendance-edit-row\.cityteam-client/);
   assert.match(css, /\.attendance-edit-row\.volunteer/);
+  assert.match(css, /\.runner-row\.cityteam-client/);
+  assert.match(css, /\.runner-row\.volunteer/);
+  assert.match(css, /\.person-card\.cityteam-client/);
+  assert.match(css, /\.person-card\.volunteer/);
+  assert.match(css, /\.celebration-person-row\.cityteam-client/);
+  assert.match(css, /\.celebration-person-row\.volunteer/);
   assert.match(css, /\.celebration-grid/);
   assert.match(css, /\.chart-line\.first-time/);
   assert.match(css, /\.chart-line\.returning/);
