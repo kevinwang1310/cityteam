@@ -1730,7 +1730,6 @@ function ProfileCard({
         <div>
           <p className="eyebrow">{statusLabels[normalizeRunnerStatus(runner.status)]}</p>
           <h3>{runnerName(runner)}</h3>
-          <p>{personTypeLabels[runner.personType]}</p>
         </div>
         <button className="text-action" onClick={() => setIsEditingProfile(true)} disabled={isEditingProfile}>
           Edit
@@ -1738,8 +1737,8 @@ function ProfileCard({
       </div>
 
       <section>
-        <div className="profile-section-heading">
-          <h4>Profile Details</h4>
+        <div className="profile-editor-section profile-section-heading">
+          <span className="profile-section-label profile-details">Profile Details</span>
         </div>
         <div className={isEditingProfile ? "profile-editor" : "profile-editor read-only-profile"}>
           <label>
@@ -1885,7 +1884,7 @@ function ProfileCard({
           <div className="profile-editor-section">
             <span className="profile-section-label notes">Notes</span>
           </div>
-          <label className="wide-field">
+          <label className="wide-field notes-field">
             <span>Memory notes</span>
             {isEditingProfile ? (
               <textarea
@@ -1947,8 +1946,8 @@ function ProfileCard({
       </section>
 
       <section>
-        <div className="profile-section-heading">
-          <h4>Attendance History</h4>
+        <div className="profile-editor-section profile-section-heading">
+          <span className="profile-section-label attendance-history">Attendance History</span>
         </div>
         <div className="profile-stats history-stats">
           <span><strong>{totalRunsAttended}</strong> Runs</span>
@@ -2011,7 +2010,7 @@ function ProfileCard({
             </div>
           </>
         ) : (
-          <button className="danger-action" onClick={() => setIsConfirmingDelete(true)}>
+          <button className="danger-action profile-delete-action" onClick={() => setIsConfirmingDelete(true)}>
             Delete Profile
           </button>
         )}

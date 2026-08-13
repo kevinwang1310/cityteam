@@ -96,10 +96,15 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /Profile Details/);
   assert.match(page, /Attendance History/);
   assert.match(page, /Shirts/);
+  assert.match(page, /profile-section-label profile-details/);
   assert.match(page, /profile-section-label shoes/);
   assert.match(page, /profile-section-label shirts/);
   assert.match(page, /profile-section-label notes/);
+  assert.match(page, /profile-section-label attendance-history/);
+  assert.match(page, /notes-field/);
+  assert.match(page, /profile-delete-action/);
   assert.doesNotMatch(page, /profile-section-kicker/);
+  assert.doesNotMatch(page, /personTypeLabels\[runner\.personType\]\}<\/p>/);
   assert.match(css, /\.attendance-edit-row\.cityteam-client/);
   assert.match(css, /\.attendance-edit-row\.volunteer/);
   assert.match(css, /\.runner-row\.cityteam-client/);
@@ -110,6 +115,10 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.person-card\.volunteer/);
   assert.match(css, /\.celebration-person-row\.cityteam-client/);
   assert.match(css, /\.celebration-person-row\.volunteer/);
+  assert.match(css, /\.profile-section-label\.profile-details::before/);
+  assert.match(css, /\.profile-section-label\.attendance-history::before/);
+  assert.match(css, /\.profile-editor \.notes-field > span:first-child/);
+  assert.match(css, /\.profile-delete-action/);
   assert.match(css, /#dcfce7/);
   assert.match(css, /#dbeafe/);
   assert.match(css, /#16a34a/);
