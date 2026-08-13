@@ -1188,6 +1188,12 @@ a.nav-item {
   overflow: hidden;
 }
 
+.retention-chart-card {
+  background:
+    radial-gradient(circle at top left, rgba(52, 116, 168, 0.12), transparent 34%),
+    linear-gradient(180deg, #ffffff, #f7fafc);
+}
+
 .trend-chart-card.empty {
   min-height: 180px;
   display: grid;
@@ -1245,6 +1251,14 @@ a.nav-item {
   background: var(--gold);
 }
 
+.legend-line.first-time {
+  background: #3474a8;
+}
+
+.legend-line.returning {
+  background: #8a5fbf;
+}
+
 .line-chart-shell {
   width: 100%;
   overflow-x: auto;
@@ -1287,6 +1301,14 @@ a.nav-item {
   stroke: var(--gold);
 }
 
+.chart-line.first-time {
+  stroke: #3474a8;
+}
+
+.chart-line.returning {
+  stroke: #8a5fbf;
+}
+
 .chart-dot {
   stroke: #fff;
   stroke-width: 3;
@@ -1298,6 +1320,14 @@ a.nav-item {
 
 .chart-dot.volunteers {
   fill: var(--gold);
+}
+
+.chart-dot.first-time {
+  fill: #3474a8;
+}
+
+.chart-dot.returning {
+  fill: #8a5fbf;
 }
 
 .chart-axis-label,
@@ -1334,6 +1364,14 @@ a.nav-item {
 
 .chart-value-label.volunteers {
   fill: #9a6e1e;
+}
+
+.chart-value-label.first-time {
+  fill: #2d648f;
+}
+
+.chart-value-label.returning {
+  fill: #7350a1;
 }
 
 .leaderboard-card {

@@ -74,8 +74,14 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /attendance-edit-row/);
   assert.match(page, /cityteam-client/);
   assert.match(page, /volunteer/);
+  assert.match(page, /function ClientRetentionTrendChart/);
+  assert.match(page, /First-Time and Returning Runners/);
+  assert.match(page, /firstTime/);
+  assert.match(page, /returning/);
   assert.match(css, /\.attendance-edit-row\.cityteam-client/);
   assert.match(css, /\.attendance-edit-row\.volunteer/);
+  assert.match(css, /\.chart-line\.first-time/);
+  assert.match(css, /\.chart-line\.returning/);
   assert.doesNotMatch(page, /records\.length\} runners/);
   assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);

@@ -2296,6 +2296,118 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
   );
 }
 
+function ClientRetentionTrendChart({ state }: { state: AppState }) {
+  const runs = state.runs.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const clientById = new Map(
+    state.runners
+      .filter((runner) => runner.personType === "cityteam_client")
+      .map((runner) => [runner.id, runner]),
+  );
+  const firstRunByClientId = new Map<string, string>();
+
+  for (const run of runs) {
+    const clientAttendance = state.attendance.filter(
+      (item) => item.runId === run.id && item.attended && clientById.has(item.runnerId),
+    );
+
+    for (const record of clientAttendance) {
+      if (!firstRunByClientId.has(record.runnerId)) {
+        firstRunByClientId.set(record.runnerId, run.id);
+      }
+    }
+  }
+
+  const points = runs.map((run) => {
+    const clientAttendance = state.attendance.filter(
+      (item) => item.runId === run.id && item.attended && clientById.has(item.runnerId),
+    );
+    const firstTime = clientAttendance.filter((item) => firstRunByClientId.get(item.runnerId) === run.id).length;
+    const returning = clientAttendance.length - firstTime;
+
+    return {
+      run,
+      firstTime,
+      returning,
+      total: clientAttendance.length,
+    };
+  });
+  const width = 920;
+  const height = 360;
+  const chart = { left: 58, right: 28, top: 40, bottom: 72 };
+  const innerWidth = width - chart.left - chart.right;
+  const innerHeight = height - chart.top - chart.bottom;
+  const maxCount = Math.max(1, ...points.flatMap((point) => [point.firstTime, point.returning, point.total]));
+  const roundedMax = Math.max(4, Math.ceil(maxCount / 4) * 4);
+  const yTicks = [0, roundedMax / 4, roundedMax / 2, (roundedMax * 3) / 4, roundedMax];
+  const xFor = (index: number) =>
+    chart.left + (points.length <= 1 ? innerWidth / 2 : (index / (points.length - 1)) * innerWidth);
+  const yFor = (value: number) => chart.top + innerHeight - (value / roundedMax) * innerHeight;
+  const pathFor = (key: "firstTime" | "returning") =>
+    points.map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point[key])}`).join(" ");
+
+  if (!points.length) {
+    return (
+      <div className="trend-chart-card empty">
+        <p>No CityTeam client attendance yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="trend-chart-card retention-chart-card">
+      <div className="trend-chart-head">
+        <div>
+          <p className="eyebrow">CityTeam client retention</p>
+          <h4>First-Time and Returning Runners</h4>
+        </div>
+        <div className="chart-legend" aria-label="Chart legend">
+          <span><i className="legend-line first-time" /> First-time</span>
+          <span><i className="legend-line returning" /> Returning</span>
+        </div>
+      </div>
+
+      <div className="line-chart-shell" role="img" aria-label="CityTeam client first-time and returning attendance by date">
+        <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+          <rect x="0" y="0" width={width} height={height} rx="8" className="chart-bg" />
+          {yTicks.map((tick) => (
+            <g key={tick}>
+              <line x1={chart.left} x2={width - chart.right} y1={yFor(tick)} y2={yFor(tick)} className="chart-grid" />
+              <text x={chart.left - 14} y={yFor(tick) + 4} className="chart-axis-label" textAnchor="end">
+                {Math.round(tick)}
+              </text>
+            </g>
+          ))}
+
+          <path d={pathFor("firstTime")} className="chart-line first-time" />
+          <path d={pathFor("returning")} className="chart-line returning" />
+
+          {points.map((point, index) => {
+            const x = xFor(index);
+            const firstTimeY = yFor(point.firstTime);
+            const returningY = yFor(point.returning);
+            return (
+              <g key={point.run.id}>
+                <line x1={x} x2={x} y1={chart.top} y2={height - chart.bottom} className="chart-date-guide" />
+                <circle cx={x} cy={firstTimeY} r="6" className="chart-dot first-time" />
+                <circle cx={x} cy={returningY} r="6" className="chart-dot returning" />
+                <text x={x} y={Math.max(18, firstTimeY - 15)} className="chart-value-label first-time" textAnchor="middle">
+                  {point.firstTime}
+                </text>
+                <text x={x} y={Math.min(height - chart.bottom - 8, returningY + 27)} className="chart-value-label returning" textAnchor="middle">
+                  {point.returning}
+                </text>
+                <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
+                  {formatShortDate(point.run.date)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function AttendanceLeaderboard({
   state,
   onOpenProfile,
@@ -2462,6 +2574,7 @@ function RunsSection({
         </div>
       </div>
       <AttendanceTrendChart state={state} />
+      <ClientRetentionTrendChart state={state} />
       <AttendanceLeaderboard state={state} onOpenProfile={onOpenProfile} />
       <div className="collapsible-section-head">
         <div>
