@@ -1435,7 +1435,17 @@ export default function Home() {
         )}
 
         {section === "people" && <PeopleSection state={state} selectRunner={(id) => { openRunnerProfile(id); setSection("checkin"); }} />}
-        {section === "runs" && <RunsSection state={state} onToggleAttendance={updateRunAttendance} onDeleteRun={deleteRun} />}
+        {section === "runs" && (
+          <RunsSection
+            state={state}
+            onToggleAttendance={updateRunAttendance}
+            onDeleteRun={deleteRun}
+            onOpenProfile={(runnerId) => {
+              openRunnerProfile(runnerId);
+              setSection("checkin");
+            }}
+          />
+        )}
         {section === "upcoming" && (
           <UpcomingRunsSection
             state={state}
@@ -2235,7 +2245,13 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
   );
 }
 
-function AttendanceLeaderboard({ state }: { state: AppState }) {
+function AttendanceLeaderboard({
+  state,
+  onOpenProfile,
+}: {
+  state: AppState;
+  onOpenProfile: (runnerId: string) => void;
+}) {
   const [leaderboardScope, setLeaderboardScope] = useState<"active" | "all">("active");
   const leaders = state.runners
     .filter((runner) => runner.personType === "cityteam_client")
@@ -2285,9 +2301,22 @@ function AttendanceLeaderboard({ state }: { state: AppState }) {
             return (
               <article key={runner.id} className={earnedShoes ? "leaderboard-row earned" : "leaderboard-row"}>
                 <span className="leaderboard-rank">{index + 1}</span>
-                <Avatar runner={runner} />
+                <button
+                  className="leaderboard-profile-trigger avatar-trigger"
+                  onDoubleClick={() => onOpenProfile(runner.id)}
+                  title={`Double-click to open ${runnerName(runner)}'s profile`}
+                  aria-label={`Open ${runnerName(runner)} profile`}
+                >
+                  <Avatar runner={runner} />
+                </button>
                 <div className="leaderboard-person">
-                  <strong>{runnerName(runner)}</strong>
+                  <button
+                    className="leaderboard-profile-trigger name-trigger"
+                    onDoubleClick={() => onOpenProfile(runner.id)}
+                    title={`Double-click to open ${runnerName(runner)}'s profile`}
+                  >
+                    {runnerName(runner)}
+                  </button>
                   <small>{statusLabels[normalizeRunnerStatus(runner.status)]} CityTeam Client</small>
                   <div className="shoe-run-chart" aria-label={`${runnerName(runner)} has attended ${runsAttended} runs`}>
                     {shoeRuns.map((runNumber) => (
@@ -2359,10 +2388,12 @@ function RunsSection({
   state,
   onToggleAttendance,
   onDeleteRun,
+  onOpenProfile,
 }: {
   state: AppState;
   onToggleAttendance: (runnerId: string, runId: string, attended: boolean) => Promise<void>;
   onDeleteRun: (runId: string) => Promise<void>;
+  onOpenProfile: (runnerId: string) => void;
 }) {
   const [editingRunId, setEditingRunId] = useState("");
   const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState("");
@@ -2379,7 +2410,7 @@ function RunsSection({
         </div>
       </div>
       <AttendanceTrendChart state={state} />
-      <AttendanceLeaderboard state={state} />
+      <AttendanceLeaderboard state={state} onOpenProfile={onOpenProfile} />
       <div className="collapsible-section-head">
         <div>
           <p className="eyebrow">Run records</p>

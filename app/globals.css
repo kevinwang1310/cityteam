@@ -1424,6 +1424,43 @@ a.nav-item {
   gap: 4px;
 }
 
+.leaderboard-profile-trigger {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.leaderboard-profile-trigger.avatar-trigger {
+  display: block;
+  width: 52px;
+  height: 52px;
+}
+
+.leaderboard-profile-trigger.name-trigger {
+  justify-self: start;
+  text-align: left;
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-profile-trigger:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.leaderboard-profile-trigger.avatar-trigger:hover {
+  text-decoration: none;
+}
+
+.leaderboard-profile-trigger.avatar-trigger:hover .avatar {
+  outline: 2px solid rgba(11, 42, 66, 0.26);
+  outline-offset: 2px;
+}
+
 .leaderboard-person strong {
   color: var(--ink);
   overflow-wrap: anywhere;
