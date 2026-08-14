@@ -1353,14 +1353,61 @@ a.nav-item {
   font-size: 1.22rem;
 }
 
+.trend-chart-head small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.chart-range-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.chart-range-toggle button {
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.chart-range-toggle button.active {
+  color: #fff;
+  background: var(--navy);
+}
+
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px 14px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 850;
+}
+
+.chart-legend-overlay {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 1;
+  justify-content: center;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 96px);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
 }
 
 .chart-legend span {
@@ -1382,7 +1429,7 @@ a.nav-item {
 
 .legend-line.volunteers {
   height: 3px;
-  background: #2563eb;
+  background: #60a5fa;
 }
 
 .legend-line.first-time {
@@ -1394,14 +1441,15 @@ a.nav-item {
 }
 
 .line-chart-shell {
+  position: relative;
   width: 100%;
-  overflow-x: auto;
+  overflow: hidden;
   padding-bottom: 2px;
 }
 
 .line-chart-shell svg {
   width: 100%;
-  min-width: 760px;
+  min-width: 0;
   height: auto;
   display: block;
 }
@@ -1432,7 +1480,7 @@ a.nav-item {
 }
 
 .chart-line.volunteers {
-  stroke: #2563eb;
+  stroke: #60a5fa;
   stroke-width: 1.75;
 }
 
@@ -1454,7 +1502,7 @@ a.nav-item {
 }
 
 .chart-dot.volunteers {
-  fill: #2563eb;
+  fill: #60a5fa;
 }
 
 .chart-dot.first-time {
@@ -1498,8 +1546,8 @@ a.nav-item {
 }
 
 .chart-value-label.volunteers {
-  fill: #1d4ed8;
-  font-size: 12px;
+  fill: #3b82f6;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -2039,8 +2087,10 @@ a.nav-item {
 
 .upcoming-month-heading h4 {
   margin: 0;
-  color: var(--navy);
-  font-size: 1rem;
+  color: #1d4ed8;
+  font-size: 1.42rem;
+  font-weight: 900;
+  line-height: 1.1;
 }
 
 .upcoming-month-heading span {
@@ -2236,30 +2286,22 @@ a.nav-item {
 .upcoming-run-metrics {
   grid-area: metrics;
   display: grid;
-  grid-template-columns: repeat(2, minmax(74px, auto));
-  gap: 6px;
+  grid-template-columns: minmax(0, max-content);
 }
 
 .metric-card {
-  min-height: 44px;
-  min-width: 70px;
-  display: grid;
-  align-content: center;
-  gap: 1px;
-  padding: 6px 8px;
-  border: 1px solid rgba(11, 42, 66, 0.1);
-  border-radius: 8px;
-  background: var(--surface-strong);
-}
-
-.metric-card.attending {
-  border-color: rgba(22, 163, 74, 0.24);
-  background: #dcfce7;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .metric-card strong {
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
 .snack-status {
@@ -2267,10 +2309,9 @@ a.nav-item {
   min-width: 96px;
   display: grid;
   gap: 1px;
-  padding: 6px 8px;
-  border: 1px solid rgba(200, 155, 60, 0.26);
-  border-radius: 8px;
-  background: rgba(255, 248, 230, 0.72);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .snack-status strong {
@@ -2515,6 +2556,21 @@ code {
 
   .chart-legend {
     justify-content: flex-start;
+  }
+
+  .chart-legend-overlay {
+    top: 14px;
+    max-width: calc(100% - 28px);
+    font-size: 0.82rem;
+  }
+
+  .chart-range-toggle {
+    width: 100%;
+  }
+
+  .chart-range-toggle button {
+    flex: 1;
+    padding: 0 8px;
   }
 
   .leaderboard-tools {

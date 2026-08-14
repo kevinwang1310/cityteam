@@ -8,6 +8,7 @@ type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
 type Section = "checkin" | "people" | "celebration" | "runs" | "upcoming" | "settings";
+type ChartRange = 8 | 16 | "all";
 
 type Runner = {
   id: string;
@@ -467,9 +468,19 @@ function attendanceRoleCounts(records: Attendance[], runnerById: Map<string, Run
   };
 }
 
-function chartLabelY(valueY: number, peerY: number, chartBottomY: number) {
-  if (valueY <= peerY) return Math.max(18, valueY - 15);
+function chartLabelY(valueY: number, peerY: number, chartBottomY: number, tieSide: "above" | "below" = "above") {
+  if (valueY < peerY || (valueY === peerY && tieSide === "above")) return Math.max(18, valueY - 15);
   return Math.min(chartBottomY - 8, valueY + 27);
+}
+
+const chartRangeOptions: { label: string; value: ChartRange }[] = [
+  { label: "Recent 8", value: 8 },
+  { label: "Recent 16", value: 16 },
+  { label: "All", value: "all" },
+];
+
+function chartDateLabelStep(pointCount: number) {
+  return Math.max(1, Math.ceil(pointCount / 8));
 }
 
 function sortedRunsByDate(state: AppState) {
@@ -2542,9 +2553,10 @@ function RunDayCelebrationSection({
 }
 
 function AttendanceTrendChart({ state }: { state: AppState }) {
+  const [chartRange, setChartRange] = useState<ChartRange>(8);
   const runs = state.runs.slice().sort((a, b) => a.date.localeCompare(b.date));
   const runnerById = new Map(state.runners.map((runner) => [runner.id, runner]));
-  const points = runs.map((run) => {
+  const allPoints = runs.map((run) => {
     const records = state.attendance.filter((item) => item.runId === run.id && item.attended);
     const { clients, volunteers, total } = attendanceRoleCounts(records, runnerById);
 
@@ -2555,6 +2567,7 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
       total,
     };
   });
+  const points = chartRange === "all" ? allPoints : allPoints.slice(-chartRange);
   const width = 920;
   const height = 360;
   const chart = { left: 58, right: 28, top: 40, bottom: 72 };
@@ -2568,6 +2581,7 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
   const yFor = (value: number) => chart.top + innerHeight - (value / roundedMax) * innerHeight;
   const pathFor = (key: "clients" | "volunteers") =>
     points.map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point[key])}`).join(" ");
+  const dateLabelStep = chartDateLabelStep(points.length);
   const areaFor = (key: "clients" | "volunteers") => {
     if (!points.length) return "";
     const firstX = xFor(0);
@@ -2589,14 +2603,26 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
         <div>
           <p className="eyebrow">Attendance trend</p>
           <h4>CityTeam Clients and Volunteers</h4>
+          <small>Showing {points.length} of {allPoints.length} runs</small>
         </div>
-        <div className="chart-legend" aria-label="Chart legend">
-          <span><i className="legend-line clients" /> CityTeam runners</span>
-          <span><i className="legend-line volunteers" /> Volunteers</span>
+        <div className="chart-range-toggle" aria-label="Attendance chart range">
+          {chartRangeOptions.map((option) => (
+            <button
+              key={option.label}
+              className={chartRange === option.value ? "active" : ""}
+              onClick={() => setChartRange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="line-chart-shell" role="img" aria-label="Attendance trend by date for CityTeam runners and volunteers">
+        <div className="chart-legend chart-legend-overlay" aria-label="Chart legend">
+          <span><i className="legend-line clients" /> CityTeam runners</span>
+          <span><i className="legend-line volunteers" /> Volunteers</span>
+        </div>
         <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
           <defs>
             <linearGradient id="clientsArea" x1="0" x2="0" y1="0" y2="1">
@@ -2604,8 +2630,8 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
               <stop offset="100%" stopColor="#24785f" stopOpacity="0.02" />
             </linearGradient>
             <linearGradient id="volunteersArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -2628,8 +2654,8 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
             const x = xFor(index);
             const clientY = yFor(point.clients);
             const volunteerY = yFor(point.volunteers);
-            const clientLabelY = chartLabelY(clientY, volunteerY, height - chart.bottom);
-            const volunteerLabelY = chartLabelY(volunteerY, clientY, height - chart.bottom);
+            const clientLabelY = chartLabelY(clientY, volunteerY, height - chart.bottom, "above");
+            const volunteerLabelY = chartLabelY(volunteerY, clientY, height - chart.bottom, "below");
             return (
               <g key={point.run.id}>
                 <line x1={x} x2={x} y1={chart.top} y2={height - chart.bottom} className="chart-date-guide" />
@@ -2641,9 +2667,11 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
                 <text x={x} y={volunteerLabelY} className="chart-value-label volunteers" textAnchor="middle">
                   {point.volunteers}
                 </text>
-                <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
-                  {formatShortDate(point.run.date)}
-                </text>
+                {(index === 0 || index === points.length - 1 || index % dateLabelStep === 0) && (
+                  <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
+                    {formatShortDate(point.run.date)}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -2654,6 +2682,7 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
 }
 
 function ClientRetentionTrendChart({ state }: { state: AppState }) {
+  const [chartRange, setChartRange] = useState<ChartRange>(8);
   const runs = state.runs.slice().sort((a, b) => a.date.localeCompare(b.date));
   const clientById = new Map(
     state.runners
@@ -2674,7 +2703,7 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
     }
   }
 
-  const points = runs.map((run) => {
+  const allPoints = runs.map((run) => {
     const clientAttendance = state.attendance.filter(
       (item) => item.runId === run.id && item.attended && clientById.has(item.runnerId),
     );
@@ -2688,6 +2717,7 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
       total: clientAttendance.length,
     };
   });
+  const points = chartRange === "all" ? allPoints : allPoints.slice(-chartRange);
   const width = 920;
   const height = 360;
   const chart = { left: 58, right: 28, top: 40, bottom: 72 };
@@ -2701,6 +2731,7 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
   const yFor = (value: number) => chart.top + innerHeight - (value / roundedMax) * innerHeight;
   const pathFor = (key: "firstTime" | "returning") =>
     points.map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point[key])}`).join(" ");
+  const dateLabelStep = chartDateLabelStep(points.length);
 
   if (!points.length) {
     return (
@@ -2716,14 +2747,26 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
         <div>
           <p className="eyebrow">CityTeam client retention</p>
           <h4>First-Time and Returning Runners</h4>
+          <small>Showing {points.length} of {allPoints.length} runs</small>
         </div>
-        <div className="chart-legend" aria-label="Chart legend">
-          <span><i className="legend-line first-time" /> First-time</span>
-          <span><i className="legend-line returning" /> Returning</span>
+        <div className="chart-range-toggle" aria-label="Retention chart range">
+          {chartRangeOptions.map((option) => (
+            <button
+              key={option.label}
+              className={chartRange === option.value ? "active" : ""}
+              onClick={() => setChartRange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="line-chart-shell" role="img" aria-label="CityTeam client first-time and returning attendance by date">
+        <div className="chart-legend chart-legend-overlay" aria-label="Chart legend">
+          <span><i className="legend-line first-time" /> First-time</span>
+          <span><i className="legend-line returning" /> Returning</span>
+        </div>
         <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
           <rect x="0" y="0" width={width} height={height} rx="8" className="chart-bg" />
           {yTicks.map((tick) => (
@@ -2753,9 +2796,11 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
                 <text x={x} y={Math.min(height - chart.bottom - 8, returningY + 27)} className="chart-value-label returning" textAnchor="middle">
                   {point.returning}
                 </text>
-                <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
-                  {formatShortDate(point.run.date)}
-                </text>
+                {(index === 0 || index === points.length - 1 || index % dateLabelStep === 0) && (
+                  <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
+                    {formatShortDate(point.run.date)}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -3182,7 +3227,6 @@ function UpcomingRunsSection({
                   const rsvpPercent = activeVolunteers.length
                     ? Math.min(Math.round((volunteerRecords.length / activeVolunteers.length) * 100), 100)
                     : 0;
-                  const openVolunteerSlots = Math.max(activeVolunteers.length - volunteerRecords.length - declinedRecords.length, 0);
             return (
               <article
                 key={run.id}
@@ -3198,14 +3242,10 @@ function UpcomingRunsSection({
                     <strong>{run.title}</strong>
                     <small>{formatShortDate(run.date)}</small>
                   </div>
-                  <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} attending, ${declinedRecords.length} declined`}>
-                    <div className="metric-card attending">
-                      <strong>{volunteerRecords.length}</strong>
-                      <span>Attending</span>
-                    </div>
+                  <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} volunteers confirmed, ${declinedRecords.length} declined`}>
                     <div className="metric-card">
-                      <strong>{openVolunteerSlots}</strong>
-                      <span>Open</span>
+                      <strong>{volunteerRecords.length}</strong>
+                      <span>Volunteers confirmed</span>
                     </div>
                   </div>
                   <div className="snack-status">
