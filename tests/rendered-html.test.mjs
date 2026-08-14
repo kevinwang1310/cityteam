@@ -191,7 +191,7 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.upcoming-run-head\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\);/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.calendar-date-tile\s*\{[^}]*width:\s*62px;[^}]*grid-template-columns:\s*1fr;/);
   assert.match(css, /\.metric-card\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
-  assert.match(css, /\.confirmed-volunteer-avatars \.avatar\s*\{[^}]*width:\s*26px;[^}]*height:\s*26px;/s);
+  assert.match(css, /\.confirmed-volunteer-avatars \.avatar\s*\{[^}]*width:\s*52px;[^}]*height:\s*52px;/s);
   assert.match(css, /\.snack-status\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.calendar-date-tile/);
   assert.match(css, /\.upcoming-run-metrics/);
