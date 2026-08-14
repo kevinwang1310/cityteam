@@ -1834,8 +1834,10 @@ a.nav-item {
 
 .celebration-card-head h4 {
   margin: 0;
-  color: var(--navy);
-  font-size: 1.04rem;
+  color: #0b7a5b;
+  font-size: 1.16rem;
+  font-weight: 950;
+  letter-spacing: 0;
 }
 
 .celebration-card-head p {
@@ -2506,12 +2508,18 @@ code {
   }
 
   .chart-legend {
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .chart-legend-overlay {
-    top: 28px;
+    position: static;
+    transform: none;
+    width: 100%;
     max-width: calc(100% - 28px);
+    margin: 8px auto 12px;
+    border: 1px solid rgba(215, 205, 187, 0.72);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.92);
     font-size: 1rem;
   }
 
