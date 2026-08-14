@@ -1,18 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f4ef;
+  --background: #f4f1e8;
   --surface: #ffffff;
-  --surface-strong: #fdfbf6;
+  --surface-strong: #fbf8ef;
+  --surface-soft: #f8f5ec;
   --ink: #17212b;
   --muted: #68737d;
-  --line: #ddd8cf;
+  --line: #ddd6ca;
+  --line-strong: #cfc6b6;
   --navy: #0b2a42;
   --navy-2: #153e5d;
   --gold: #c89b3c;
   --green: #24785f;
+  --green-deep: #0b5f49;
+  --blue: #2563eb;
+  --blue-soft: #60a5fa;
   --red: #b64545;
+  --client-bg: #dcfce7;
+  --client-bg-active: #bbf7d0;
+  --volunteer-bg: #dbeafe;
+  --volunteer-bg-active: #bfdbfe;
+  --focus-ring: 0 0 0 3px rgba(36, 120, 95, 0.15);
   --shadow: 0 18px 50px rgba(13, 37, 54, 0.12);
+  --shadow-soft: 0 12px 28px rgba(13, 37, 54, 0.08);
+  --shadow-hover: 0 16px 34px rgba(13, 37, 54, 0.12);
 }
 
 @theme inline {
@@ -36,7 +48,7 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    linear-gradient(180deg, rgba(11, 42, 66, 0.08), rgba(246, 244, 239, 0) 360px),
+    linear-gradient(180deg, rgba(11, 42, 66, 0.1), rgba(36, 120, 95, 0.04) 270px, rgba(244, 241, 232, 0) 520px),
     var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -49,6 +61,19 @@ select {
 
 button {
   cursor: pointer;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 
 .app-shell {
@@ -68,11 +93,23 @@ button {
   width: min(100%, 430px);
   display: grid;
   gap: 18px;
-  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 248, 239, 0.96)),
+    var(--surface);
   box-shadow: var(--shadow);
   padding: 28px;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, var(--green), var(--gold), var(--navy-2));
 }
 
 .login-logo {
@@ -129,8 +166,8 @@ button {
 }
 
 .login-form input:focus {
-  border-color: var(--navy-2);
-  box-shadow: 0 0 0 3px rgba(21, 62, 93, 0.14);
+  border-color: var(--green);
+  box-shadow: var(--focus-ring);
 }
 
 .sidebar {
@@ -139,7 +176,9 @@ button {
   height: 100vh;
   padding: 28px 20px;
   color: #fff;
-  background: var(--navy);
+  background:
+    linear-gradient(180deg, #08263d, var(--navy) 56%, #0f3a35),
+    var(--navy);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -162,7 +201,7 @@ button {
   margin: 0 0 4px;
   color: var(--gold);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -205,7 +244,9 @@ a.nav-item {
 .nav-item.active,
 .nav-item:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 4px 0 0 var(--gold);
 }
 
 .workspace {
@@ -240,8 +281,8 @@ a.nav-item {
 .snack-select select:focus,
 .profile-select select:focus,
 .gear-editor select:focus {
-  border-color: var(--navy-2);
-  box-shadow: 0 0 0 3px rgba(21, 62, 93, 0.14);
+  border-color: var(--green);
+  box-shadow: var(--focus-ring);
 }
 
 .checkin-layout {
@@ -258,15 +299,17 @@ a.nav-item {
 .run-panel,
 .profile-panel,
 .content-section {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 248, 239, 0.9)),
+    var(--surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .run-panel,
 .content-section {
-  padding: 18px;
+  padding: 20px;
 }
 
 .run-summary,
@@ -275,13 +318,17 @@ a.nav-item {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(207, 198, 182, 0.7);
+  padding-bottom: 16px;
 }
 
 .run-summary h3,
 .section-heading h3 {
   color: var(--navy);
-  font-size: 1.55rem;
+  font-size: 1.68rem;
+  font-weight: 850;
+  line-height: 1.08;
 }
 
 .summary-pills,
@@ -300,15 +347,16 @@ a.nav-item {
   align-items: center;
   padding: 0 12px;
   color: var(--muted);
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.74);
   font-size: 0.88rem;
-  font-weight: 750;
+  font-weight: 800;
 }
 
 .filter.active {
   color: #fff;
-  border-color: var(--navy);
-  background: var(--navy);
+  border-color: var(--green-deep);
+  background: var(--green-deep);
+  box-shadow: 0 6px 14px rgba(36, 120, 95, 0.18);
 }
 
 .run-day-notice {
@@ -345,14 +393,16 @@ a.nav-item {
   border-radius: 8px;
   padding: 0 16px;
   color: #fff;
-  background: var(--navy);
+  background: linear-gradient(180deg, var(--navy-2), var(--navy));
   font-weight: 850;
+  box-shadow: 0 8px 18px rgba(11, 42, 66, 0.16);
 }
 
 .primary-action:hover,
 .new-runner-form button:hover,
 .present-toggle:hover {
-  background: var(--navy-2);
+  background: linear-gradient(180deg, #1a4a6e, var(--navy));
+  box-shadow: var(--shadow-hover);
 }
 
 .filter-row,
@@ -365,9 +415,9 @@ a.nav-item {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface-strong);
+  background: var(--surface-soft);
 }
 
 .runner-list {
@@ -386,9 +436,10 @@ a.nav-item {
   gap: 12px;
   align-items: center;
   padding: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 6px 18px rgba(13, 37, 54, 0.04);
 }
 
 .mixed-role-view .runner-row.cityteam-client,
@@ -398,7 +449,7 @@ a.nav-item {
 .mixed-role-view .attendance-edit-row.cityteam-client {
   border-color: rgba(22, 163, 74, 0.44);
   border-left: 5px solid #16a34a;
-  background: #dcfce7;
+  background: var(--client-bg);
 }
 
 .mixed-role-view .runner-row.volunteer,
@@ -408,17 +459,17 @@ a.nav-item {
 .mixed-role-view .attendance-edit-row.volunteer {
   border-color: rgba(37, 99, 235, 0.42);
   border-left: 5px solid #2563eb;
-  background: #dbeafe;
+  background: var(--volunteer-bg);
 }
 
 .runner-row.cityteam-client.checked {
   border-color: rgba(21, 128, 61, 0.58);
-  background: #bbf7d0;
+  background: var(--client-bg-active);
 }
 
 .runner-row.volunteer.checked {
   border-color: rgba(29, 78, 216, 0.58);
-  background: #bfdbfe;
+  background: var(--volunteer-bg-active);
 }
 
 .runner-main {
@@ -481,7 +532,7 @@ a.nav-item {
 }
 
 .present-toggle.active {
-  background: var(--green);
+  background: linear-gradient(180deg, #2f8d70, var(--green));
 }
 
 .profile-panel {
@@ -620,7 +671,7 @@ a.nav-item {
 }
 
 .profile-panel section {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(207, 198, 182, 0.72);
   padding-top: 12px;
   margin-top: 12px;
 }
@@ -781,7 +832,7 @@ a.nav-item {
   gap: 11px;
   border: 1px solid rgba(200, 155, 60, 0.28);
   border-radius: 999px;
-  background: linear-gradient(180deg, #fff, rgba(255, 248, 230, 0.72));
+  background: linear-gradient(180deg, #fff, rgba(251, 248, 239, 0.88));
   box-shadow: 0 1px 0 rgba(11, 42, 66, 0.04);
   padding: 7px 14px 7px 7px;
 }
@@ -855,7 +906,7 @@ a.nav-item {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.74);
   color: var(--ink);
   padding: 0 10px;
   font-size: 0.88rem;
@@ -885,7 +936,7 @@ a.nav-item {
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.78);
   color: var(--ink);
   padding: 12px;
   line-height: 1.45;
@@ -895,8 +946,8 @@ a.nav-item {
 .notes-editor textarea:focus,
 .profile-editor textarea:focus,
 .decline-note textarea:focus {
-  border-color: var(--navy-2);
-  box-shadow: 0 0 0 3px rgba(21, 62, 93, 0.14);
+  border-color: var(--green);
+  box-shadow: var(--focus-ring);
 }
 
 .notes-actions {
@@ -1182,9 +1233,11 @@ a.nav-item {
   justify-content: space-between;
   gap: 16px;
   margin: 4px 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(251, 248, 239, 0.86)),
+    var(--surface);
   padding: 14px;
 }
 
@@ -1222,7 +1275,7 @@ a.nav-item {
   gap: 6px;
   padding: 0 12px;
   color: var(--muted);
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.76);
   font-size: 0.86rem;
   font-weight: 800;
 }
@@ -1261,14 +1314,15 @@ a.nav-item {
 
 .person-card {
   min-height: 162px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
   display: grid;
   justify-items: start;
   gap: 8px;
   padding: 14px;
   text-align: left;
+  box-shadow: 0 6px 18px rgba(13, 37, 54, 0.04);
 }
 
 .person-card:hover,
@@ -1276,6 +1330,7 @@ a.nav-item {
 .runner-row:hover,
 .table-row:hover {
   border-color: rgba(11, 42, 66, 0.25);
+  box-shadow: var(--shadow-hover);
 }
 
 .person-card.active {
@@ -1284,12 +1339,12 @@ a.nav-item {
 }
 
 .mixed-role-view .person-card.cityteam-client.active {
-  background: #bbf7d0;
+  background: var(--client-bg-active);
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
 }
 
 .mixed-role-view .person-card.volunteer.active {
-  background: #bfdbfe;
+  background: var(--volunteer-bg-active);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
@@ -1299,26 +1354,28 @@ a.nav-item {
 }
 
 .run-history-card {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.9);
   overflow: hidden;
+  box-shadow: 0 8px 20px rgba(13, 37, 54, 0.05);
 }
 
 .trend-chart-card {
   margin-bottom: 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background:
-    radial-gradient(circle at top left, rgba(36, 120, 95, 0.12), transparent 34%),
-    linear-gradient(180deg, #ffffff, #f8faf7);
+    linear-gradient(135deg, rgba(36, 120, 95, 0.11), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, #ffffff, var(--surface-soft));
   padding: 16px;
   overflow: hidden;
+  box-shadow: 0 10px 24px rgba(13, 37, 54, 0.06);
 }
 
 .retention-chart-card {
   background:
-    radial-gradient(circle at top left, rgba(52, 116, 168, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(52, 116, 168, 0.11), rgba(255, 255, 255, 0) 42%),
     linear-gradient(180deg, #ffffff, #f7fafc);
 }
 
@@ -1344,8 +1401,9 @@ a.nav-item {
 
 .trend-chart-head h4 {
   margin: 0;
-  color: var(--navy);
+  color: var(--green-deep);
   font-size: 1.22rem;
+  font-weight: 900;
 }
 
 .trend-chart-head small {
@@ -1556,10 +1614,11 @@ a.nav-item {
 
 .leaderboard-card {
   margin-bottom: 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.9);
   padding: 16px;
+  box-shadow: 0 10px 24px rgba(13, 37, 54, 0.05);
 }
 
 .leaderboard-card.empty {
@@ -1584,8 +1643,9 @@ a.nav-item {
 
 .leaderboard-head h4 {
   margin: 0;
-  color: var(--navy);
+  color: var(--green-deep);
   font-size: 1.22rem;
+  font-weight: 900;
 }
 
 .leaderboard-tools {
@@ -1615,7 +1675,7 @@ a.nav-item {
 }
 
 .leaderboard-toggle button.active {
-  background: var(--navy);
+  background: var(--green-deep);
   color: #fff;
 }
 
@@ -1684,9 +1744,9 @@ a.nav-item {
   grid-template-columns: 34px 48px minmax(0, 1fr) minmax(58px, auto) minmax(0, auto);
   gap: 12px;
   align-items: center;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.78);
   padding: 10px;
 }
 
@@ -1701,7 +1761,7 @@ a.nav-item {
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  background: var(--navy);
+  background: linear-gradient(180deg, var(--navy-2), var(--navy));
   color: #fff;
   font-weight: 900;
 }
@@ -1819,10 +1879,13 @@ a.nav-item {
 
 .celebration-card {
   min-width: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 248, 239, 0.82)),
+    var(--surface);
   padding: 14px;
+  box-shadow: 0 10px 24px rgba(13, 37, 54, 0.05);
 }
 
 .celebration-card-head {
@@ -1834,7 +1897,7 @@ a.nav-item {
 
 .celebration-card-head h4 {
   margin: 0;
-  color: #0b7a5b;
+  color: var(--green-deep);
   font-size: 1.16rem;
   font-weight: 950;
   letter-spacing: 0;
@@ -1863,7 +1926,7 @@ a.nav-item {
   align-items: center;
   border: 1px solid rgba(11, 42, 66, 0.1);
   border-radius: 8px;
-  background: var(--surface-strong);
+  background: rgba(255, 255, 255, 0.78);
   padding: 9px;
   color: inherit;
   text-align: left;
@@ -1876,12 +1939,12 @@ a.nav-item {
 
 .mixed-role-view .celebration-person-row.cityteam-client:hover {
   border-color: rgba(21, 128, 61, 0.58);
-  background: #bbf7d0;
+  background: var(--client-bg-active);
 }
 
 .mixed-role-view .celebration-person-row.volunteer:hover {
   border-color: rgba(29, 78, 216, 0.58);
-  background: #bfdbfe;
+  background: var(--volunteer-bg-active);
 }
 
 .celebration-person-row .avatar {
@@ -1936,9 +1999,9 @@ a.nav-item {
   align-items: center;
   min-height: 68px;
   padding: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .run-history-card .table-row {
@@ -1983,7 +2046,7 @@ a.nav-item {
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--line);
-  background: var(--surface-strong);
+  background: var(--surface-soft);
 }
 
 .attendance-edit-row {
@@ -1996,17 +2059,17 @@ a.nav-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .attendance-edit-row.cityteam-client.checked {
   border-color: rgba(21, 128, 61, 0.58);
-  background: #bbf7d0;
+  background: var(--client-bg-active);
 }
 
 .attendance-edit-row.volunteer.checked {
   border-color: rgba(29, 78, 216, 0.58);
-  background: #bfdbfe;
+  background: var(--volunteer-bg-active);
 }
 
 .attendance-edit-row input {
@@ -2037,11 +2100,12 @@ a.nav-item {
   align-items: end;
   margin-top: 16px;
   padding: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(11, 42, 66, 0.04), rgba(255, 255, 255, 0) 48%),
-    var(--surface-strong);
+    linear-gradient(135deg, rgba(36, 120, 95, 0.08), rgba(255, 255, 255, 0) 48%),
+    var(--surface-soft);
+  box-shadow: 0 8px 20px rgba(13, 37, 54, 0.05);
 }
 
 .upcoming-run-form label,
@@ -2135,9 +2199,9 @@ a.nav-item {
 
 .upcoming-run-card,
 .empty-state {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .upcoming-run-card {
@@ -2146,7 +2210,7 @@ a.nav-item {
   padding: 12px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 26px rgba(11, 42, 66, 0.05);
+  box-shadow: 0 12px 26px rgba(11, 42, 66, 0.06);
 }
 
 .upcoming-run-card.expanded {
@@ -2195,7 +2259,7 @@ a.nav-item {
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(11, 42, 66, 0.08) 0 28px, transparent 28px),
-    var(--surface-strong);
+    var(--surface-soft);
 }
 
 .calendar-date-tile small {
@@ -2219,7 +2283,7 @@ a.nav-item {
 }
 
 .upcoming-run-title-block strong {
-  color: var(--navy);
+  color: var(--green-deep);
   font-size: 1rem;
 }
 
@@ -2346,12 +2410,12 @@ a.nav-item {
   border-left: 5px solid #2563eb;
   border-radius: 8px;
   padding: 8px;
-  background: #dbeafe;
+  background: var(--volunteer-bg);
 }
 
 .volunteer-rsvp.checked {
   border-color: rgba(29, 78, 216, 0.58);
-  background: #bfdbfe;
+  background: var(--volunteer-bg-active);
 }
 
 .volunteer-rsvp.declined {
@@ -2383,7 +2447,7 @@ a.nav-item {
 .rsvp-action.active {
   color: #fff;
   border-color: var(--green);
-  background: var(--green);
+  background: var(--green-deep);
 }
 
 .rsvp-action.decline {
@@ -2432,9 +2496,10 @@ a.nav-item {
 }
 
 .setup-panel {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 20px rgba(13, 37, 54, 0.05);
 }
 
 .setup-panel {
@@ -2499,6 +2564,11 @@ code {
   .nav-item {
     text-align: center;
     padding: 0 8px;
+  }
+
+  .nav-item.active,
+  .nav-item:hover {
+    box-shadow: inset 0 -4px 0 var(--gold);
   }
 
   .checkin-layout,
