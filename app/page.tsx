@@ -3146,63 +3146,6 @@ function UpcomingRunsSection({
         </div>
       </div>
 
-      <div className="upcoming-run-form">
-        <label>
-          <span>Run date</span>
-          <input
-            type="date"
-            value={runDate}
-            onChange={(event) => setRunDate(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>Title</span>
-          <input
-            value={runTitle}
-            onChange={(event) => setRunTitle(event.target.value)}
-            placeholder={`${formatShortDate(runDate)} Run`}
-          />
-        </label>
-        <button
-          className="primary-action"
-          disabled={!runDate || savingDate}
-          onClick={async () => {
-            setSavingDate(true);
-            try {
-              await onCreateRun(runDate, runTitle);
-              setExpandedRunId(`upcoming-${runDate}`);
-              setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
-              setRunTitle("");
-            } finally {
-              setSavingDate(false);
-            }
-          }}
-        >
-          {savingDate ? "Saving..." : "Add Run Date"}
-        </button>
-      </div>
-
-      {upcomingRuns.length ? (
-        <div className="upcoming-agenda-shell">
-          <div className="upcoming-next-panel">
-            <span className="upcoming-next-label">Next on the calendar</span>
-            <strong>{upcomingRuns[0].title}</strong>
-            <small>{formatShortDate(upcomingRuns[0].date)}</small>
-          </div>
-          <div className="upcoming-calendar-rail" aria-hidden="true">
-            {upcomingRuns.slice(0, 5).map((run) => {
-              const calendarDate = formatCalendarDate(run.date);
-              return (
-                <span key={run.id}>
-                  <small>{calendarDate.month}</small>
-                  <strong>{calendarDate.day}</strong>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
       <div className="upcoming-run-list">
         {upcomingRuns.length ? (
           upcomingRunGroups.map((group) => (
@@ -3217,6 +3160,8 @@ function UpcomingRunsSection({
                   const volunteerRecords = state.upcomingRunVolunteers.filter(
                     (item) => item.upcomingRunId === run.id && item.attending,
                   );
+                  const confirmedVolunteerIds = new Set(volunteerRecords.map((item) => item.runnerId));
+                  const confirmedVolunteers = activeVolunteers.filter((volunteer) => confirmedVolunteerIds.has(volunteer.id));
                   const declinedRecords = state.upcomingRunVolunteers.filter(
                     (item) => item.upcomingRunId === run.id && !item.attending,
                   );
@@ -3243,9 +3188,22 @@ function UpcomingRunsSection({
                     <small>{formatShortDate(run.date)}</small>
                   </div>
                   <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} volunteers confirmed, ${declinedRecords.length} declined`}>
-                    <div className="metric-card">
-                      <strong>{volunteerRecords.length}</strong>
-                      <span>Volunteers confirmed</span>
+                    <div className="metric-card volunteers-confirmed">
+                      <span className="confirmed-count">
+                        <strong>{volunteerRecords.length}</strong>
+                        <span>Volunteers confirmed</span>
+                      </span>
+                      {confirmedVolunteers.length ? (
+                        <span
+                          className="confirmed-volunteer-avatars"
+                          aria-label={`${confirmedVolunteers.length} confirmed volunteer photos`}
+                        >
+                          {confirmedVolunteers.slice(0, 4).map((volunteer) => (
+                            <Avatar key={volunteer.id} runner={volunteer} />
+                          ))}
+                          {confirmedVolunteers.length > 4 && <small>+{confirmedVolunteers.length - 4}</small>}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="snack-status">
@@ -3385,6 +3343,42 @@ function UpcomingRunsSection({
             <span>Add the next Saturday run date to start collecting volunteer RSVPs.</span>
           </div>
         )}
+      </div>
+
+      <div className="upcoming-run-form">
+        <label>
+          <span>Run date</span>
+          <input
+            type="date"
+            value={runDate}
+            onChange={(event) => setRunDate(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Title</span>
+          <input
+            value={runTitle}
+            onChange={(event) => setRunTitle(event.target.value)}
+            placeholder={`${formatShortDate(runDate)} Run`}
+          />
+        </label>
+        <button
+          className="primary-action"
+          disabled={!runDate || savingDate}
+          onClick={async () => {
+            setSavingDate(true);
+            try {
+              await onCreateRun(runDate, runTitle);
+              setExpandedRunId(`upcoming-${runDate}`);
+              setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
+              setRunTitle("");
+            } finally {
+              setSavingDate(false);
+            }
+          }}
+        >
+          {savingDate ? "Saving..." : "Add Run Date"}
+        </button>
       </div>
     </section>
   );

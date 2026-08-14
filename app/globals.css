@@ -2038,7 +2038,7 @@ a.nav-item {
   grid-template-columns: minmax(170px, 220px) minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: end;
-  margin-bottom: 16px;
+  margin-top: 16px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2106,35 +2106,6 @@ a.nav-item {
   gap: 10px;
 }
 
-.upcoming-agenda-shell {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
-  gap: 14px;
-  align-items: stretch;
-  margin-bottom: 14px;
-}
-
-.upcoming-next-panel,
-.upcoming-calendar-rail {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 10px 24px rgba(11, 42, 66, 0.05);
-}
-
-.upcoming-next-panel {
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  min-height: 108px;
-  padding: 18px;
-  border-color: rgba(11, 42, 66, 0.14);
-  background:
-    linear-gradient(135deg, rgba(11, 42, 66, 0.08), rgba(22, 163, 74, 0.08)),
-    var(--surface);
-}
-
-.upcoming-next-label,
 .upcoming-run-badge,
 .snack-status span,
 .metric-card span {
@@ -2142,46 +2113,6 @@ a.nav-item {
   font-size: 0.7rem;
   font-weight: 850;
   text-transform: uppercase;
-}
-
-.upcoming-next-panel strong {
-  color: var(--navy);
-  font-size: 1.18rem;
-}
-
-.upcoming-next-panel small {
-  color: var(--muted);
-}
-
-.upcoming-calendar-rail {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(58px, 1fr));
-  gap: 8px;
-  padding: 12px;
-}
-
-.upcoming-calendar-rail span {
-  min-height: 84px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 2px;
-  border: 1px solid rgba(11, 42, 66, 0.1);
-  border-radius: 8px;
-  background: var(--surface-strong);
-}
-
-.upcoming-calendar-rail small {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
-.upcoming-calendar-rail strong {
-  color: var(--navy);
-  font-size: 1.4rem;
-  line-height: 1;
 }
 
 .upcoming-run-card,
@@ -2302,6 +2233,51 @@ a.nav-item {
 .metric-card strong {
   color: var(--navy);
   font-size: 1.05rem;
+}
+
+.volunteers-confirmed {
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmed-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.confirmed-volunteer-avatars {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding-left: 2px;
+}
+
+.confirmed-volunteer-avatars .avatar {
+  width: 26px;
+  height: 26px;
+  margin-left: -7px;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 4px rgba(11, 42, 66, 0.14);
+}
+
+.confirmed-volunteer-avatars .avatar:first-child {
+  margin-left: 0;
+}
+
+.confirmed-volunteer-avatars small {
+  min-width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  margin-left: -7px;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 850;
 }
 
 .snack-status {
@@ -2605,7 +2581,6 @@ code {
   .toolbar,
   .new-runner-form,
   .upcoming-run-form,
-  .upcoming-agenda-shell,
   .upcoming-title-editor,
   .profile-editor,
   .people-layout .profile-editor,
@@ -2629,14 +2604,13 @@ code {
 
   .upcoming-run-head {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      "date"
-      "title"
-      "metrics"
-      "snack"
-      "action";
-    align-items: stretch;
+      "date title"
+      "metrics metrics"
+      "snack snack"
+      "action action";
+    align-items: center;
   }
 
   .upcoming-month-heading {
@@ -2651,20 +2625,16 @@ code {
   }
 
   .calendar-date-tile {
-    width: 100%;
-    min-height: 72px;
-    grid-template-columns: auto auto;
-    justify-content: start;
+    width: 62px;
+    min-height: 70px;
+    grid-template-columns: 1fr;
+    justify-content: center;
     align-content: center;
-    padding: 0 14px;
-  }
-
-  .upcoming-calendar-rail {
-    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    padding: 0;
   }
 
   .upcoming-run-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .snack-status {
