@@ -94,6 +94,7 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /const peopleStatusOptions/);
   assert.match(page, /\{ label: "Inactive", value: "inactive" \}/);
   assert.match(page, /statusFilter === "active" \? normalizedStatus === "active" : normalizedStatus !== "active"/);
+  assert.match(page, /aria-label="Runner status filter"[\s\S]*peopleStatusOptions\.map/);
   assert.match(page, /peopleStatusOptions\.map/);
   assert.match(page, /<small>\{countAttendance\(state, runner\.id\)\} runs<\/small>/);
   assert.doesNotMatch(page, /personTypeLabels\[runner\.personType\]\} \| \{statusLabels\[normalizeRunnerStatus\(runner\.status\)\]\} \| \{countAttendance\(state, runner\.id\)\} runs/);

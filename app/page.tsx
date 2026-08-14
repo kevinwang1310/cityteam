@@ -875,7 +875,7 @@ export default function Home() {
   const [state, setState] = useState<AppState>(demoState);
   const [section, setSection] = useState<Section>("checkin");
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [selectedRunnerId, setSelectedRunnerId] = useState<string>(demoState.runners[1].id);
   const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
@@ -940,7 +940,11 @@ export default function Home() {
   const filteredRunners = useMemo(() => {
     const clean = query.trim().toLowerCase();
     return state.runners
-      .filter((runner) => statusFilter === "all" || normalizeRunnerStatus(runner.status) === statusFilter)
+      .filter((runner) => {
+        const normalizedStatus = normalizeRunnerStatus(runner.status);
+        return statusFilter === "all" ||
+          (statusFilter === "active" ? normalizedStatus === "active" : normalizedStatus !== "active");
+      })
       .filter((runner) => personTypeFilter === "all" || runner.personType === personTypeFilter)
       .filter((runner) => {
         if (!clean) return true;
@@ -1470,13 +1474,6 @@ export default function Home() {
                   <span>{checkinSummary.firstTimers} first-timers</span>
                 </div>
               </div>
-              {!isScheduledRunDay && (
-                <div className="run-day-notice">
-                  <strong>No scheduled run today</strong>
-                  <span>Add today in Upcoming Runs to enable run-day check-ins.</span>
-                </div>
-              )}
-
               <div className="toolbar">
                 <input
                   value={query}
@@ -1488,13 +1485,13 @@ export default function Home() {
               </div>
 
               <div className="filter-row" aria-label="Runner status filter">
-                {([...statusOptions, "all"] as const).map((status) => (
+                {peopleStatusOptions.map((status) => (
                   <button
-                    key={status}
-                    className={statusFilter === status ? "filter active" : "filter"}
-                    onClick={() => setStatusFilter(status)}
+                    key={status.value}
+                    className={statusFilter === status.value ? "filter active" : "filter"}
+                    onClick={() => setStatusFilter(status.value)}
                   >
-                    {status === "all" ? "All" : statusLabels[status]}
+                    {status.label}
                   </button>
                 ))}
               </div>
