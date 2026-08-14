@@ -398,14 +398,6 @@ function nextSaturdayDate(from = new Date()) {
   return dateInRunClubTimeZone(current);
 }
 
-function isSaturdayRunDate(date: string) {
-  const day = new Intl.DateTimeFormat("en-US", {
-    timeZone: runClubTimeZone,
-    weekday: "short",
-  }).format(new Date(`${date}T12:00:00-07:00`));
-  return day === "Sat";
-}
-
 function normalizeRunnerStatus(status: LegacyRunnerStatus): RunnerStatus {
   if (status === "exited") return "inactive_left_program";
   if (status === "inactive") return "inactive_working";
@@ -465,6 +457,11 @@ function attendanceRoleCounts(records: Attendance[], runnerById: Map<string, Run
     volunteers,
     total: clients + volunteers,
   };
+}
+
+function chartLabelY(valueY: number, peerY: number, chartBottomY: number) {
+  if (valueY <= peerY) return Math.max(18, valueY - 15);
+  return Math.min(chartBottomY - 8, valueY + 27);
 }
 
 function sortedRunsByDate(state: AppState) {
@@ -858,6 +855,7 @@ export default function Home() {
   const [selectedRunnerId, setSelectedRunnerId] = useState<string>(demoState.runners[1].id);
   const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
   const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
+  const [runDayDialogOpen, setRunDayDialogOpen] = useState(false);
   const [todayRunId, setTodayRunId] = useState(todayId());
   const [connectionState, setConnectionState] = useState<"demo" | "loading" | "connected" | "error">(
     hasSupabaseConfig() ? "loading" : "demo",
@@ -893,13 +891,21 @@ export default function Home() {
     load();
   }, []);
 
+  const todayDateValue = todayDate();
+  const todayUpcomingRun = useMemo(
+    () => state.upcomingRuns.find((run) => run.date === todayDateValue),
+    [state.upcomingRuns, todayDateValue],
+  );
   const todayRun = useMemo(() => {
     const existing = state.runs.find((run) => run.id === todayRunId);
     if (existing) return existing;
-    const date = todayDate();
-    return { id: todayRunId, date, title: `${formatShortDate(date)} Run` };
-  }, [state.runs, todayRunId]);
-  const isScheduledRunDay = isSaturdayRunDate(todayRun.date);
+    return {
+      id: todayRunId,
+      date: todayDateValue,
+      title: todayUpcomingRun?.title || `${formatShortDate(todayDateValue)} Run`,
+    };
+  }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
+  const isScheduledRunDay = Boolean(todayUpcomingRun);
 
   const todayAttendance = useMemo(
     () => state.attendance.filter((item) => item.runId === todayRunId && item.attended),
@@ -959,7 +965,7 @@ export default function Home() {
 
   async function updateAttendance(runnerId: string, updates: Partial<Attendance>) {
     if (!isScheduledRunDay) {
-      setMessage("No scheduled run today. Run Club check-ins are only enabled on Saturdays.");
+      setRunDayDialogOpen(true);
       return;
     }
 
@@ -1442,7 +1448,7 @@ export default function Home() {
               {!isScheduledRunDay && (
                 <div className="run-day-notice">
                   <strong>No scheduled run today</strong>
-                  <span>Check-ins are only enabled on Saturdays. Use Runs to correct past attendance.</span>
+                  <span>Add today in Upcoming Runs to enable run-day check-ins.</span>
                 </div>
               )}
 
@@ -1504,7 +1510,7 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="runner-list checkin-runner-list">
+              <div className={["runner-list", "checkin-runner-list", personTypeFilter === "all" ? "mixed-role-view" : ""].filter(Boolean).join(" ")}>
                 {filteredRunners.map((runner) => (
                   <article
                     key={runner.id}
@@ -1524,10 +1530,9 @@ export default function Home() {
                     <div className="row-actions">
                       <button
                         className={isCheckedIn(runner.id) ? "present-toggle active" : "present-toggle"}
-                        disabled={!isScheduledRunDay}
                         onClick={() => updateAttendance(runner.id, { attended: !isCheckedIn(runner.id) })}
                       >
-                        {!isScheduledRunDay ? "No Run" : isCheckedIn(runner.id) ? "Present" : "Check In"}
+                        {isCheckedIn(runner.id) ? "Present" : "Check-in"}
                       </button>
                     </div>
                   </article>
@@ -1619,6 +1624,19 @@ export default function Home() {
             </ul>
             <button className="primary-action" onClick={() => setCheckinCelebration(null)}>
               Got it
+            </button>
+          </section>
+        </div>
+      )}
+      {runDayDialogOpen && (
+        <div className="celebration-dialog-backdrop" role="dialog" aria-modal="true" aria-label="Run day check-in notice">
+          <section className="celebration-dialog">
+            <div>
+              <p className="eyebrow">Check-in</p>
+              <h3>Please check-in on run day</h3>
+            </div>
+            <button className="primary-action" onClick={() => setRunDayDialogOpen(false)}>
+              OK
             </button>
           </section>
         </div>
@@ -2219,7 +2237,7 @@ function PeopleSection({
   onCloseMobile: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
-  const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("all");
+  const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [query, setQuery] = useState("");
   const cleanQuery = query.trim().toLowerCase();
   const visibleRunners = state.runners.filter((runner) => {
@@ -2285,7 +2303,7 @@ function PeopleSection({
             ))}
           </div>
         </div>
-        <div className="people-grid">
+        <div className={["people-grid", personTypeFilter === "all" ? "mixed-role-view" : ""].filter(Boolean).join(" ")}>
           {visibleRunners.map((runner) => (
             <button
               key={runner.id}
@@ -2369,10 +2387,14 @@ function RunDayCelebrationSection({
   state: AppState;
   onOpenProfile: (runnerId: string) => void;
 }) {
+  const [celebrationScope, setCelebrationScope] = useState<"active" | "all">("active");
   const runs = sortedRunsByDate(state);
   const latestRun = runs[runs.length - 1];
   const previousRun = runs[runs.length - 2];
-  const cityTeamClients = state.runners.filter((runner) => runner.personType === "cityteam_client");
+  const cityTeamClients = state.runners
+    .filter((runner) => runner.personType === "cityteam_client")
+    .filter((runner) => celebrationScope === "all" || normalizeRunnerStatus(runner.status) === "active");
+  const clientScopeLabel = celebrationScope === "active" ? "active CityTeam clients" : "CityTeam clients";
   const latestAttendance = latestRun
     ? state.attendance.filter((item) => item.runId === latestRun.id && item.attended)
     : [];
@@ -2410,22 +2432,43 @@ function RunDayCelebrationSection({
           );
       })
     : [];
+  const latestRunSummary = latestRun
+    ? latestRun.title.trim() === formatShortDate(latestRun.date)
+      ? formatShortDate(latestRun.date)
+      : `${latestRun.title} | ${formatShortDate(latestRun.date)}`
+    : "No saved runs yet";
 
   return (
     <section className="content-section">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Latest run</p>
-          <h3>Run Day Celebration</h3>
-          <small>{latestRun ? `${latestRun.title} | ${formatShortDate(latestRun.date)}` : "No saved runs yet"}</small>
+          <h3>{celebrationScope === "active" ? "Active Run Day Celebration" : "Run Day Celebration"}</h3>
+          <small>{latestRunSummary}</small>
+        </div>
+        <div className="leaderboard-tools">
+          <div className="leaderboard-toggle" aria-label="Celebration scope">
+            <button
+              className={celebrationScope === "active" ? "active" : ""}
+              onClick={() => setCelebrationScope("active")}
+            >
+              Active
+            </button>
+            <button
+              className={celebrationScope === "all" ? "active" : ""}
+              onClick={() => setCelebrationScope("all")}
+            >
+              All CityTeam Clients
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="celebration-grid">
         <CelebrationList
           title="Top 5 Streaks"
-          subtitle="CityTeam clients with the longest current run-day streaks."
-          empty="No active CityTeam client streaks yet."
+          subtitle={`${clientScopeLabel} with the longest current run-day streaks.`}
+          empty={`No ${clientScopeLabel} streaks yet.`}
         >
           {topStreaks.map(({ runner, streak }) => (
             <CelebrationPersonRow
@@ -2440,7 +2483,7 @@ function RunDayCelebrationSection({
 
         <CelebrationList
           title="Shoes Earned"
-          subtitle="CityTeam clients whose fourth run was the latest run."
+          subtitle={`${clientScopeLabel} whose fourth run was the latest run.`}
           empty="No new shoe milestones on the latest run."
         >
           {shoeEarners.map((runner) => (
@@ -2456,7 +2499,7 @@ function RunDayCelebrationSection({
 
         <CelebrationList
           title="T-Shirts Earned"
-          subtitle="CityTeam clients whose second run was the latest run."
+          subtitle={`${clientScopeLabel} whose second run was the latest run.`}
           empty="No new T-shirt milestones on the latest run."
         >
           {shirtEarners.map((runner) => (
@@ -2472,7 +2515,7 @@ function RunDayCelebrationSection({
 
         <CelebrationList
           title="Comebacks"
-          subtitle="CityTeam clients who returned on the latest run after missing the prior run."
+          subtitle={`${clientScopeLabel} who returned on the latest run after missing the prior run.`}
           empty="No comebacks on the latest run."
         >
           {comebacks.map((runner) => (
@@ -2553,8 +2596,8 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
               <stop offset="100%" stopColor="#24785f" stopOpacity="0.02" />
             </linearGradient>
             <linearGradient id="volunteersArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#c89b3c" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#c89b3c" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -2577,15 +2620,17 @@ function AttendanceTrendChart({ state }: { state: AppState }) {
             const x = xFor(index);
             const clientY = yFor(point.clients);
             const volunteerY = yFor(point.volunteers);
+            const clientLabelY = chartLabelY(clientY, volunteerY, height - chart.bottom);
+            const volunteerLabelY = chartLabelY(volunteerY, clientY, height - chart.bottom);
             return (
               <g key={point.run.id}>
                 <line x1={x} x2={x} y1={chart.top} y2={height - chart.bottom} className="chart-date-guide" />
                 <circle cx={x} cy={clientY} r="6" className="chart-dot clients" />
                 <circle cx={x} cy={volunteerY} r="6" className="chart-dot volunteers" />
-                <text x={x} y={Math.max(18, clientY - 15)} className="chart-value-label clients" textAnchor="middle">
+                <text x={x} y={clientLabelY} className="chart-value-label clients" textAnchor="middle">
                   {point.clients}
                 </text>
-                <text x={x} y={Math.min(height - chart.bottom - 8, volunteerY + 27)} className="chart-value-label volunteers" textAnchor="middle">
+                <text x={x} y={volunteerLabelY} className="chart-value-label volunteers" textAnchor="middle">
                   {point.volunteers}
                 </text>
                 <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
@@ -2956,7 +3001,7 @@ function RunsSection({
                   </div>
                 )}
                 {isEditing && (
-                  <div className="attendance-editor">
+                  <div className="attendance-editor mixed-role-view">
                     {runners.map((runner) => {
                       const existing = state.attendance.find(
                         (item) => item.runnerId === runner.id && item.runId === run.id,

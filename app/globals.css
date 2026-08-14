@@ -391,21 +391,21 @@ a.nav-item {
   background: var(--surface);
 }
 
-.runner-row.cityteam-client,
-.person-card.cityteam-client,
-.leaderboard-row.cityteam-client,
-.celebration-person-row.cityteam-client,
-.attendance-edit-row.cityteam-client {
+.mixed-role-view .runner-row.cityteam-client,
+.mixed-role-view .person-card.cityteam-client,
+.mixed-role-view .leaderboard-row.cityteam-client,
+.mixed-role-view .celebration-person-row.cityteam-client,
+.mixed-role-view .attendance-edit-row.cityteam-client {
   border-color: rgba(22, 163, 74, 0.44);
   border-left: 5px solid #16a34a;
   background: #dcfce7;
 }
 
-.runner-row.volunteer,
-.person-card.volunteer,
-.leaderboard-row.volunteer,
-.celebration-person-row.volunteer,
-.attendance-edit-row.volunteer {
+.mixed-role-view .runner-row.volunteer,
+.mixed-role-view .person-card.volunteer,
+.mixed-role-view .leaderboard-row.volunteer,
+.mixed-role-view .celebration-person-row.volunteer,
+.mixed-role-view .attendance-edit-row.volunteer {
   border-color: rgba(37, 99, 235, 0.42);
   border-left: 5px solid #2563eb;
   background: #dbeafe;
@@ -1283,12 +1283,17 @@ a.nav-item {
   border-color: rgba(11, 42, 66, 0.25);
 }
 
-.person-card.cityteam-client.active {
+.person-card.active {
+  background: #eef3f5;
+  box-shadow: 0 0 0 3px rgba(11, 42, 66, 0.1);
+}
+
+.mixed-role-view .person-card.cityteam-client.active {
   background: #bbf7d0;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
 }
 
-.person-card.volunteer.active {
+.mixed-role-view .person-card.volunteer.active {
   background: #bfdbfe;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
@@ -1376,7 +1381,8 @@ a.nav-item {
 }
 
 .legend-line.volunteers {
-  background: var(--gold);
+  height: 3px;
+  background: #2563eb;
 }
 
 .legend-line.first-time {
@@ -1426,7 +1432,8 @@ a.nav-item {
 }
 
 .chart-line.volunteers {
-  stroke: var(--gold);
+  stroke: #2563eb;
+  stroke-width: 2.5;
 }
 
 .chart-line.first-time {
@@ -1447,7 +1454,7 @@ a.nav-item {
 }
 
 .chart-dot.volunteers {
-  fill: var(--gold);
+  fill: #2563eb;
 }
 
 .chart-dot.first-time {
@@ -1491,7 +1498,7 @@ a.nav-item {
 }
 
 .chart-value-label.volunteers {
-  fill: #9a6e1e;
+  fill: #1d4ed8;
 }
 
 .chart-value-label.first-time {
@@ -1820,12 +1827,12 @@ a.nav-item {
   background: #eef3f5;
 }
 
-.celebration-person-row.cityteam-client:hover {
+.mixed-role-view .celebration-person-row.cityteam-client:hover {
   border-color: rgba(21, 128, 61, 0.58);
   background: #bbf7d0;
 }
 
-.celebration-person-row.volunteer:hover {
+.mixed-role-view .celebration-person-row.volunteer:hover {
   border-color: rgba(29, 78, 216, 0.58);
   background: #bfdbfe;
 }
