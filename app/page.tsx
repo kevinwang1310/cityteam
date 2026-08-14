@@ -2331,7 +2331,7 @@ function PeopleSection({
             >
               <Avatar runner={runner} />
               <strong>{runnerName(runner)}</strong>
-              <small>{personTypeLabels[runner.personType]} | {statusLabels[normalizeRunnerStatus(runner.status)]} | {countAttendance(state, runner.id)} runs</small>
+              <small>{countAttendance(state, runner.id)} runs</small>
             </button>
           ))}
         </div>

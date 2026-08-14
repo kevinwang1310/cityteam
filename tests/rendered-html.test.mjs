@@ -90,6 +90,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /function roleClassName/);
   assert.match(page, /useState<PersonType \| "all">\("cityteam_client"\)/);
   assert.match(page, /function PeopleSection[\s\S]*useState<PersonType \| "all">\("cityteam_client"\)/);
+  assert.match(page, /<small>\{countAttendance\(state, runner\.id\)\} runs<\/small>/);
+  assert.doesNotMatch(page, /personTypeLabels\[runner\.personType\]\} \| \{statusLabels\[normalizeRunnerStatus\(runner\.status\)\]\} \| \{countAttendance\(state, runner\.id\)\} runs/);
   assert.match(page, /const \[runDayDialogOpen, setRunDayDialogOpen\] = useState\(false\)/);
   assert.match(page, /state\.upcomingRuns\.find\(\(run\) => run\.date === todayDateValue\)/);
   assert.match(page, /const isScheduledRunDay = Boolean\(todayUpcomingRun\)/);
