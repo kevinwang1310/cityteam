@@ -174,8 +174,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /#60a5fa/);
   assert.match(css, /\.chart-line\.volunteers\s*\{[^}]*stroke:\s*#60a5fa;[^}]*stroke-width:\s*1\.75;/s);
   assert.match(css, /\.chart-value-label\.volunteers\s*\{[^}]*fill:\s*#3b82f6;[^}]*font-size:\s*11px;[^}]*font-weight:\s*500;/s);
-  assert.match(css, /\.chart-legend\s*\{[^}]*font-size:\s*0\.95rem;/s);
-  assert.match(css, /\.chart-legend-overlay\s*\{[^}]*position:\s*absolute;[^}]*top:\s*18px;[^}]*left:\s*50%;/s);
+  assert.match(css, /\.chart-legend\s*\{[^}]*font-size:\s*1\.18rem;[^}]*font-weight:\s*900;/s);
+  assert.match(css, /\.chart-legend-overlay\s*\{[^}]*position:\s*absolute;[^}]*top:\s*34px;[^}]*left:\s*50%;/s);
   assert.match(css, /\.line-chart-shell\s*\{[^}]*position:\s*relative;/s);
   assert.match(css, /\.line-chart-shell\s*\{[^}]*overflow:\s*hidden;/s);
   assert.match(css, /\.line-chart-shell svg\s*\{[^}]*min-width:\s*0;/s);

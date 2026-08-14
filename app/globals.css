@@ -1392,22 +1392,22 @@ a.nav-item {
   justify-content: flex-end;
   gap: 8px 14px;
   color: var(--muted);
-  font-size: 0.95rem;
-  font-weight: 850;
+  font-size: 1.18rem;
+  font-weight: 900;
 }
 
 .chart-legend-overlay {
   position: absolute;
-  top: 18px;
+  top: 34px;
   left: 50%;
   z-index: 1;
   justify-content: center;
   transform: translateX(-50%);
   width: max-content;
   max-width: calc(100% - 96px);
-  padding: 3px 10px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .chart-legend span {
@@ -2515,9 +2515,9 @@ code {
   }
 
   .chart-legend-overlay {
-    top: 14px;
+    top: 28px;
     max-width: calc(100% - 28px);
-    font-size: 0.82rem;
+    font-size: 1rem;
   }
 
   .chart-range-toggle {
