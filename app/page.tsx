@@ -9,6 +9,7 @@ type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
 type Section = "checkin" | "people" | "celebration" | "runs" | "upcoming" | "settings";
 type ChartRange = 8 | 16 | "all";
+type PeopleStatusFilter = "active" | "inactive" | "all";
 
 type Runner = {
   id: string;
@@ -157,6 +158,11 @@ const statusLabels: Record<RunnerStatus, string> = {
 };
 
 const statusOptions = Object.keys(statusLabels) as RunnerStatus[];
+const peopleStatusOptions: { label: string; value: PeopleStatusFilter }[] = [
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+  { label: "All", value: "all" },
+];
 
 const shoeSizeOptions = [
   "",
@@ -1540,9 +1546,7 @@ export default function Home() {
                       <span>
                         <strong>{runnerName(runner)}</strong>
                         <small>
-                          <span className="inline-type">{personTypeLabels[runner.personType]}</span>
-                          {" | "}
-                          {runner.notes || "Runner"} | {countAttendance(state, runner.id)} runs | Last run {lastSeen(state, runner.id)}
+                          {countAttendance(state, runner.id)} runs | Last run {lastSeen(state, runner.id)}
                         </small>
                       </span>
                     </button>
@@ -2255,13 +2259,15 @@ function PeopleSection({
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
-  const [statusFilter, setStatusFilter] = useState<RunnerStatus | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [query, setQuery] = useState("");
   const cleanQuery = query.trim().toLowerCase();
   const visibleRunners = state.runners.filter((runner) => {
+    const normalizedStatus = normalizeRunnerStatus(runner.status);
     return (
-      (statusFilter === "all" || normalizeRunnerStatus(runner.status) === statusFilter) &&
+      (statusFilter === "all" ||
+        (statusFilter === "active" ? normalizedStatus === "active" : normalizedStatus !== "active")) &&
       (personTypeFilter === "all" || runner.personType === personTypeFilter) &&
       (!cleanQuery ||
         [runnerName(runner), runner.firstName, runner.lastName]
@@ -2300,13 +2306,13 @@ function PeopleSection({
             />
           </div>
           <div className="filter-row" aria-label="People status filter">
-            {([...statusOptions, "all"] as const).map((status) => (
+            {peopleStatusOptions.map((status) => (
               <button
-                key={status}
-                className={statusFilter === status ? "filter active" : "filter"}
-                onClick={() => setStatusFilter(status)}
+                key={status.value}
+                className={statusFilter === status.value ? "filter active" : "filter"}
+                onClick={() => setStatusFilter(status.value)}
               >
-                {status === "all" ? "All" : statusLabels[status]}
+                {status.label}
               </button>
             ))}
           </div>

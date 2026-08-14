@@ -453,11 +453,6 @@ a.nav-item {
   overflow-wrap: anywhere;
 }
 
-.inline-type {
-  color: var(--navy);
-  font-weight: 850;
-}
-
 .avatar {
   width: 52px;
   height: 52px;
@@ -2572,6 +2567,37 @@ code {
 
   .row-actions {
     display: grid;
+  }
+
+  .checkin-runner-list .runner-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .checkin-runner-list .runner-main {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .checkin-runner-list .avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .checkin-runner-list .runner-main small {
+    font-size: 0.78rem;
+  }
+
+  .checkin-runner-list .row-actions {
+    display: flex;
+  }
+
+  .checkin-runner-list .present-toggle {
+    width: auto;
+    min-width: 86px;
+    min-height: 38px;
+    padding: 0 10px;
   }
 
   .delete-confirmation,

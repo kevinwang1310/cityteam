@@ -90,6 +90,11 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /function roleClassName/);
   assert.match(page, /useState<PersonType \| "all">\("cityteam_client"\)/);
   assert.match(page, /function PeopleSection[\s\S]*useState<PersonType \| "all">\("cityteam_client"\)/);
+  assert.match(page, /type PeopleStatusFilter = "active" \| "inactive" \| "all"/);
+  assert.match(page, /const peopleStatusOptions/);
+  assert.match(page, /\{ label: "Inactive", value: "inactive" \}/);
+  assert.match(page, /statusFilter === "active" \? normalizedStatus === "active" : normalizedStatus !== "active"/);
+  assert.match(page, /peopleStatusOptions\.map/);
   assert.match(page, /<small>\{countAttendance\(state, runner\.id\)\} runs<\/small>/);
   assert.doesNotMatch(page, /personTypeLabels\[runner\.personType\]\} \| \{statusLabels\[normalizeRunnerStatus\(runner\.status\)\]\} \| \{countAttendance\(state, runner\.id\)\} runs/);
   assert.match(page, /const \[runDayDialogOpen, setRunDayDialogOpen\] = useState\(false\)/);
@@ -102,6 +107,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.doesNotMatch(page, /disabled=\{!isScheduledRunDay\}/);
   assert.match(page, /checkinProfileRunner \? "checkin-layout profile-open" : "checkin-layout"/);
   assert.match(page, /checkin-runner-list/);
+  assert.match(page, /\{countAttendance\(state, runner\.id\)\} runs \| Last run \{lastSeen\(state, runner\.id\)\}/);
+  assert.doesNotMatch(page, /inline-type/);
+  assert.doesNotMatch(page, /runner\.notes \|\| "Runner"/);
   assert.match(page, /Run day milestone/);
   assert.match(page, /T-shirt earned on this check-in/);
   assert.match(page, /New shoes earned on this check-in/);
@@ -161,6 +169,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.mixed-role-view \.runner-row\.cityteam-client/);
   assert.match(css, /\.mixed-role-view \.runner-row\.volunteer/);
   assert.match(css, /\.checkin-runner-list/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.checkin-runner-list \.runner-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.checkin-runner-list \.runner-main\s*\{[^}]*grid-template-columns:\s*44px minmax\(0, 1fr\);/);
   assert.match(css, /\.celebration-dialog/);
   assert.match(css, /\.mixed-role-view \.person-card\.cityteam-client/);
   assert.match(css, /\.mixed-role-view \.person-card\.volunteer/);
