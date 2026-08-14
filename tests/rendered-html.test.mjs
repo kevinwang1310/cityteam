@@ -136,7 +136,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.doesNotMatch(page, /<span>Open<\/span>/);
   assert.match(page, /calendar-date-tile/);
   assert.doesNotMatch(page, /\{calendarDate\.weekday\}/);
-  assert.match(page, /upcoming-rsvp-progress/);
+  assert.doesNotMatch(page, /upcoming-rsvp-progress/);
+  assert.doesNotMatch(page, /upcoming-run-badge/);
   assert.doesNotMatch(page, /Next on the calendar/);
   assert.match(page, /Profile Details/);
   assert.match(page, /Attendance History/);
@@ -194,7 +195,7 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.snack-status\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.calendar-date-tile/);
   assert.match(css, /\.upcoming-run-metrics/);
-  assert.match(css, /\.upcoming-rsvp-progress/);
+  assert.doesNotMatch(css, /\.upcoming-rsvp-progress/);
   assert.doesNotMatch(page, /records\.length\} runners/);
   assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);

@@ -3169,9 +3169,6 @@ function UpcomingRunsSection({
                   const isExpanded = expandedRunId === run.id;
                   const titleDraft = titleDrafts[run.id] ?? run.title;
                   const calendarDate = formatCalendarDate(run.date);
-                  const rsvpPercent = activeVolunteers.length
-                    ? Math.min(Math.round((volunteerRecords.length / activeVolunteers.length) * 100), 100)
-                    : 0;
             return (
               <article
                 key={run.id}
@@ -3183,9 +3180,7 @@ function UpcomingRunsSection({
                     <strong>{calendarDate.day}</strong>
                   </div>
                   <div className="upcoming-run-title-block">
-                    <span className="upcoming-run-badge">{index === 0 ? "Next run" : "Scheduled"}</span>
                     <strong>{run.title}</strong>
-                    <small>{formatShortDate(run.date)}</small>
                   </div>
                   <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} volunteers confirmed, ${declinedRecords.length} declined`}>
                     <div className="metric-card volunteers-confirmed">
@@ -3217,9 +3212,6 @@ function UpcomingRunsSection({
                   >
                     {isExpanded ? "Collapse" : "Details"}
                   </button>
-                </div>
-                <div className="upcoming-rsvp-progress" aria-label={`${rsvpPercent}% of active volunteers are attending`}>
-                  <span style={{ width: `${rsvpPercent}%` }} />
                 </div>
 
                 {isExpanded && (
