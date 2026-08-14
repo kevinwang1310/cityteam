@@ -93,6 +93,11 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /Shoes Earned/);
   assert.match(page, /T-Shirts Earned/);
   assert.match(page, /Comebacks/);
+  assert.match(page, /function formatCalendarDate/);
+  assert.match(page, /upcoming-agenda-shell/);
+  assert.match(page, /calendar-date-tile/);
+  assert.match(page, /upcoming-rsvp-progress/);
+  assert.match(page, /Next on the calendar/);
   assert.match(page, /Profile Details/);
   assert.match(page, /Attendance History/);
   assert.match(page, /Shirts/);
@@ -126,6 +131,10 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.celebration-grid/);
   assert.match(css, /\.chart-line\.first-time/);
   assert.match(css, /\.chart-line\.returning/);
+  assert.match(css, /\.upcoming-agenda-shell/);
+  assert.match(css, /\.calendar-date-tile/);
+  assert.match(css, /\.upcoming-run-metrics/);
+  assert.match(css, /\.upcoming-rsvp-progress/);
   assert.doesNotMatch(page, /records\.length\} runners/);
   assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);

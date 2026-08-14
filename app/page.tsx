@@ -376,6 +376,15 @@ function formatShortDate(date: string) {
   }).format(new Date(`${date}T12:00:00-07:00`));
 }
 
+function formatCalendarDate(date: string) {
+  const parsedDate = new Date(`${date}T12:00:00-07:00`);
+  return {
+    weekday: new Intl.DateTimeFormat("en-US", { timeZone: runClubTimeZone, weekday: "short" }).format(parsedDate),
+    month: new Intl.DateTimeFormat("en-US", { timeZone: runClubTimeZone, month: "short" }).format(parsedDate),
+    day: new Intl.DateTimeFormat("en-US", { timeZone: runClubTimeZone, day: "numeric" }).format(parsedDate),
+  };
+}
+
 function todayId() {
   return `run-${todayDate()}`;
 }
@@ -3065,25 +3074,73 @@ function UpcomingRunsSection({
         </button>
       </div>
 
+      {upcomingRuns.length ? (
+        <div className="upcoming-agenda-shell">
+          <div className="upcoming-next-panel">
+            <span className="upcoming-next-label">Next on the calendar</span>
+            <strong>{upcomingRuns[0].title}</strong>
+            <small>{formatShortDate(upcomingRuns[0].date)}</small>
+          </div>
+          <div className="upcoming-calendar-rail" aria-hidden="true">
+            {upcomingRuns.slice(0, 5).map((run) => {
+              const calendarDate = formatCalendarDate(run.date);
+              return (
+                <span key={run.id}>
+                  <small>{calendarDate.month}</small>
+                  <strong>{calendarDate.day}</strong>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="upcoming-run-list">
         {upcomingRuns.length ? (
-          upcomingRuns.map((run) => {
+          upcomingRuns.map((run, index) => {
             const volunteerRecords = state.upcomingRunVolunteers.filter(
               (item) => item.upcomingRunId === run.id && item.attending,
+            );
+            const declinedRecords = state.upcomingRunVolunteers.filter(
+              (item) => item.upcomingRunId === run.id && !item.attending,
             );
             const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
             const isExpanded = expandedRunId === run.id;
             const titleDraft = titleDrafts[run.id] ?? run.title;
+            const calendarDate = formatCalendarDate(run.date);
+            const rsvpPercent = activeVolunteers.length
+              ? Math.min(Math.round((volunteerRecords.length / activeVolunteers.length) * 100), 100)
+              : 0;
+            const openVolunteerSlots = Math.max(activeVolunteers.length - volunteerRecords.length - declinedRecords.length, 0);
             return (
-              <article key={run.id} className={isExpanded ? "upcoming-run-card expanded" : "upcoming-run-card"}>
+              <article
+                key={run.id}
+                className={`${isExpanded ? "upcoming-run-card expanded" : "upcoming-run-card"} ${index === 0 ? "next-run" : ""}`}
+              >
                 <div className="upcoming-run-head">
-                  <span>
+                  <div className="calendar-date-tile" aria-label={formatShortDate(run.date)}>
+                    <span>{calendarDate.weekday}</span>
+                    <strong>{calendarDate.day}</strong>
+                    <small>{calendarDate.month}</small>
+                  </div>
+                  <div className="upcoming-run-title-block">
+                    <span className="upcoming-run-badge">{index === 0 ? "Next run" : "Scheduled"}</span>
                     <strong>{run.title}</strong>
                     <small>{formatShortDate(run.date)}</small>
-                  </span>
-                  <div className="summary-pills">
-                    <span>{volunteerRecords.length} attending</span>
-                    <span>{snackVolunteer ? `${runnerName(snackVolunteer)} snacks` : "Snacks open"}</span>
+                  </div>
+                  <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} attending, ${declinedRecords.length} declined`}>
+                    <div className="metric-card attending">
+                      <strong>{volunteerRecords.length}</strong>
+                      <span>Attending</span>
+                    </div>
+                    <div className="metric-card">
+                      <strong>{openVolunteerSlots}</strong>
+                      <span>Open</span>
+                    </div>
+                  </div>
+                  <div className="snack-status">
+                    <span>Snacks</span>
+                    <strong>{snackVolunteer ? runnerName(snackVolunteer) : "Open"}</strong>
                   </div>
                   <button
                     className="text-action"
@@ -3092,6 +3149,9 @@ function UpcomingRunsSection({
                   >
                     {isExpanded ? "Collapse" : "Details"}
                   </button>
+                </div>
+                <div className="upcoming-rsvp-progress" aria-label={`${rsvpPercent}% of active volunteers are attending`}>
+                  <span style={{ width: `${rsvpPercent}%` }} />
                 </div>
 
                 {isExpanded && (
