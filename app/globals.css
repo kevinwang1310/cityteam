@@ -2074,27 +2074,49 @@ a.nav-item {
 }
 
 .upcoming-month-heading {
-  min-height: 34px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid rgba(11, 42, 66, 0.1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(36, 120, 95, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(36, 120, 95, 0.12), rgba(210, 154, 42, 0.08) 56%, rgba(255, 255, 255, 0.88)),
+    #ffffff;
+  padding: 10px 14px 10px 18px;
+  box-shadow: 0 10px 24px rgba(11, 42, 66, 0.06);
+}
+
+.upcoming-month-heading::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 8px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--green), var(--gold));
 }
 
 .upcoming-month-heading h4 {
   margin: 0;
-  color: #1d4ed8;
-  font-size: 1.42rem;
-  font-weight: 900;
+  color: #0b5f49;
+  font-size: 1.62rem;
+  font-weight: 950;
   line-height: 1.1;
 }
 
 .upcoming-month-heading span {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 850;
+  border: 1px solid rgba(210, 154, 42, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 251, 239, 0.86);
+  color: #8a620f;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 6px 10px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .upcoming-month-runs {
@@ -2630,8 +2652,17 @@ code {
   .upcoming-month-heading {
     align-items: flex-start;
     flex-direction: column;
-    gap: 2px;
-    padding-bottom: 8px;
+    gap: 8px;
+    min-height: 0;
+    padding: 12px 14px 12px 18px;
+  }
+
+  .upcoming-month-heading h4 {
+    font-size: 1.38rem;
+  }
+
+  .upcoming-month-heading span {
+    align-self: flex-start;
   }
 
   .upcoming-month-runs {

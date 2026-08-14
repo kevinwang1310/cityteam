@@ -200,8 +200,12 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.upcoming-month-runs\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(320px, 1fr\)\)/s);
   assert.match(css, /\.upcoming-run-card\.expanded\s*\{[^}]*grid-column:\s*1 \/ -1;/s);
   assert.match(css, /\.upcoming-month-heading/);
-  assert.match(css, /\.upcoming-month-heading h4\s*\{[^}]*color:\s*#1d4ed8;[^}]*font-size:\s*1\.42rem;[^}]*font-weight:\s*900;/s);
+  assert.match(css, /\.upcoming-month-heading\s*\{[^}]*border:\s*1px solid rgba\(36, 120, 95, 0\.16\);[^}]*box-shadow:\s*0 10px 24px rgba\(11, 42, 66, 0\.06\);/s);
+  assert.match(css, /\.upcoming-month-heading::before\s*\{[^}]*background:\s*linear-gradient\(180deg, var\(--green\), var\(--gold\)\);/s);
+  assert.match(css, /\.upcoming-month-heading h4\s*\{[^}]*color:\s*#0b5f49;[^}]*font-size:\s*1\.62rem;[^}]*font-weight:\s*950;/s);
+  assert.match(css, /\.upcoming-month-heading span\s*\{[^}]*background:\s*rgba\(255, 251, 239, 0\.86\);[^}]*color:\s*#8a620f;/s);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.upcoming-run-head\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\);/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.upcoming-month-heading\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*8px;/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.calendar-date-tile\s*\{[^}]*width:\s*62px;[^}]*grid-template-columns:\s*1fr;/);
   assert.match(css, /\.metric-card\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.confirmed-volunteer-avatars \.avatar\s*\{[^}]*width:\s*52px;[^}]*height:\s*52px;/s);
