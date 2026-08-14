@@ -385,6 +385,14 @@ function formatCalendarDate(date: string) {
   };
 }
 
+function formatMonthHeading(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: runClubTimeZone,
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00-07:00`));
+}
+
 function todayId() {
   return `run-${todayDate()}`;
 }
@@ -3069,6 +3077,16 @@ function UpcomingRunsSection({
     .filter((run) => run.date >= todayDate())
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date));
+  const upcomingRunGroups = upcomingRuns.reduce<Array<{ month: string; runs: UpcomingRun[] }>>((groups, run) => {
+    const month = formatMonthHeading(run.date);
+    const existingGroup = groups.find((group) => group.month === month);
+    if (existingGroup) {
+      existingGroup.runs.push(run);
+    } else {
+      groups.push({ month, runs: [run] });
+    }
+    return groups;
+  }, []);
 
   return (
     <section className="content-section">
@@ -3142,21 +3160,29 @@ function UpcomingRunsSection({
 
       <div className="upcoming-run-list">
         {upcomingRuns.length ? (
-          upcomingRuns.map((run, index) => {
-            const volunteerRecords = state.upcomingRunVolunteers.filter(
-              (item) => item.upcomingRunId === run.id && item.attending,
-            );
-            const declinedRecords = state.upcomingRunVolunteers.filter(
-              (item) => item.upcomingRunId === run.id && !item.attending,
-            );
-            const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
-            const isExpanded = expandedRunId === run.id;
-            const titleDraft = titleDrafts[run.id] ?? run.title;
-            const calendarDate = formatCalendarDate(run.date);
-            const rsvpPercent = activeVolunteers.length
-              ? Math.min(Math.round((volunteerRecords.length / activeVolunteers.length) * 100), 100)
-              : 0;
-            const openVolunteerSlots = Math.max(activeVolunteers.length - volunteerRecords.length - declinedRecords.length, 0);
+          upcomingRunGroups.map((group) => (
+            <section key={group.month} className="upcoming-month-section">
+              <div className="upcoming-month-heading">
+                <h4>{group.month}</h4>
+                <span>{group.runs.length} {group.runs.length === 1 ? "run" : "runs"}</span>
+              </div>
+              <div className="upcoming-month-runs">
+                {group.runs.map((run) => {
+                  const index = upcomingRuns.findIndex((candidate) => candidate.id === run.id);
+                  const volunteerRecords = state.upcomingRunVolunteers.filter(
+                    (item) => item.upcomingRunId === run.id && item.attending,
+                  );
+                  const declinedRecords = state.upcomingRunVolunteers.filter(
+                    (item) => item.upcomingRunId === run.id && !item.attending,
+                  );
+                  const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
+                  const isExpanded = expandedRunId === run.id;
+                  const titleDraft = titleDrafts[run.id] ?? run.title;
+                  const calendarDate = formatCalendarDate(run.date);
+                  const rsvpPercent = activeVolunteers.length
+                    ? Math.min(Math.round((volunteerRecords.length / activeVolunteers.length) * 100), 100)
+                    : 0;
+                  const openVolunteerSlots = Math.max(activeVolunteers.length - volunteerRecords.length - declinedRecords.length, 0);
             return (
               <article
                 key={run.id}
@@ -3164,9 +3190,8 @@ function UpcomingRunsSection({
               >
                 <div className="upcoming-run-head">
                   <div className="calendar-date-tile" aria-label={formatShortDate(run.date)}>
-                    <span>{calendarDate.weekday}</span>
-                    <strong>{calendarDate.day}</strong>
                     <small>{calendarDate.month}</small>
+                    <strong>{calendarDate.day}</strong>
                   </div>
                   <div className="upcoming-run-title-block">
                     <span className="upcoming-run-badge">{index === 0 ? "Next run" : "Scheduled"}</span>
@@ -3310,7 +3335,10 @@ function UpcomingRunsSection({
                 )}
               </article>
             );
-          })
+                })}
+              </div>
+            </section>
+          ))
         ) : (
           <div className="empty-state">
             <strong>No upcoming runs yet</strong>
