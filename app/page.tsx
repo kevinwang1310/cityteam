@@ -877,7 +877,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
-  const [selectedRunnerId, setSelectedRunnerId] = useState<string>(demoState.runners[1].id);
+  const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
   const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
   const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
   const [runDayDialogOpen, setRunDayDialogOpen] = useState(false);
@@ -904,7 +904,6 @@ export default function Home() {
         const today = todayId();
         setState(incoming);
         setTodayRunId(today);
-        setSelectedRunnerId(incoming.runners[0]?.id ?? "");
         setConnectionState("connected");
         setMessage("Connected to Supabase.");
       } catch (error) {
@@ -963,11 +962,15 @@ export default function Home() {
       .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
   }, [query, state.runners, statusFilter, personTypeFilter]);
 
-  const selectedRunner = state.runners.find((runner) => runner.id === selectedRunnerId) ?? state.runners[0];
+  const selectedRunner = selectedRunnerId ? state.runners.find((runner) => runner.id === selectedRunnerId) : undefined;
 
   function openRunnerProfile(runnerId: string) {
-    setSelectedRunnerId(runnerId);
     setCheckinProfileRunnerId(runnerId);
+    setMobileProfileOpen(true);
+  }
+
+  function openPeopleProfile(runnerId: string) {
+    setSelectedRunnerId(runnerId);
     setMobileProfileOpen(true);
   }
 
@@ -1236,7 +1239,6 @@ export default function Home() {
   async function deleteRunner(runnerId: string) {
     const runner = state.runners.find((candidate) => candidate.id === runnerId);
     if (!runner) return;
-    const remainingRunners = state.runners.filter((candidate) => candidate.id !== runnerId);
 
     setState((current) => ({
       ...current,
@@ -1247,7 +1249,7 @@ export default function Home() {
       ),
       upcomingRunVolunteers: current.upcomingRunVolunteers.filter((item) => item.runnerId !== runnerId),
     }));
-    setSelectedRunnerId(remainingRunners[0]?.id ?? "");
+    setSelectedRunnerId(null);
     setMobileProfileOpen(false);
     setPhotoEditorRunner((current) => (current?.id === runnerId ? null : current));
 
@@ -1274,8 +1276,6 @@ export default function Home() {
       personType: "cityteam_client",
     };
     setState((current) => ({ ...current, runners: [runner, ...current.runners] }));
-    setSelectedRunnerId(runner.id);
-    setMobileProfileOpen(true);
     setNewRunner({ firstName: "", lastName: "", notes: "" });
     setNewRunnerOpen(false);
 
@@ -1582,12 +1582,15 @@ export default function Home() {
           <PeopleSection
             state={state}
             selectedRunner={selectedRunner}
-            selectRunner={openRunnerProfile}
+            selectRunner={openPeopleProfile}
             onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
             onSaveProfile={saveRunnerProfile}
             onDeleteProfile={deleteRunner}
             isMobileOpen={mobileProfileOpen}
-            onCloseMobile={() => setMobileProfileOpen(false)}
+            onCloseMobile={() => {
+              setMobileProfileOpen(false);
+              setSelectedRunnerId(null);
+            }}
           />
         )}
         {section === "celebration" && (
@@ -2281,7 +2284,7 @@ function PeopleSection({
   ).length;
 
   return (
-    <div className="people-layout">
+    <div className={selectedRunner ? "people-layout profile-selected" : "people-layout"}>
       <section className="content-section people-directory-panel">
         <div className="section-heading">
           <div>
@@ -2339,16 +2342,18 @@ function PeopleSection({
           ))}
         </div>
       </section>
-      <ProfileCard
-        key={profileCardKey(selectedRunner, isMobileOpen)}
-        runner={selectedRunner}
-        state={state}
-        onEditPhoto={onEditPhoto}
-        onSaveProfile={onSaveProfile}
-        onDeleteProfile={onDeleteProfile}
-        isMobileOpen={isMobileOpen}
-        onCloseMobile={onCloseMobile}
-      />
+      {selectedRunner && (
+        <ProfileCard
+          key={profileCardKey(selectedRunner, isMobileOpen)}
+          runner={selectedRunner}
+          state={state}
+          onEditPhoto={onEditPhoto}
+          onSaveProfile={onSaveProfile}
+          onDeleteProfile={onDeleteProfile}
+          isMobileOpen={isMobileOpen}
+          onCloseMobile={onCloseMobile}
+        />
+      )}
     </div>
   );
 }

@@ -1293,9 +1293,13 @@ a.nav-item {
 
 .people-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
+}
+
+.people-layout.profile-selected {
+  grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
 }
 
 .people-layout .profile-editor {
