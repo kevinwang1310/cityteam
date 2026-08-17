@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type CalendarAction = "upsert" | "delete";
+type CalendarAction = "upsert" | "delete" | "reconcile";
 
 type CalendarRun = {
   id: string;
@@ -152,7 +152,44 @@ async function deleteCalendarEvents(runId: string, accessToken: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as { action?: CalendarAction; run?: CalendarRun };
+  const body = (await request.json()) as { action?: CalendarAction; run?: CalendarRun; runs?: CalendarRun[] };
+
+  if (body.action === "reconcile") {
+    if (!Array.isArray(body.runs)) {
+      return NextResponse.json({ ok: false, error: "Missing runs calendar reconcile payload." }, { status: 400 });
+    }
+
+    if (!isConfigured()) {
+      return NextResponse.json({ ok: true, configured: false, missingRunIds: [] });
+    }
+
+    try {
+      const accessToken = await getAccessToken();
+      const missingRunIds: string[] = [];
+
+      for (const run of body.runs) {
+        if (!run.id || !run.date || !run.title) {
+          return NextResponse.json({ ok: false, error: "Invalid run calendar reconcile payload." }, { status: 400 });
+        }
+
+        const existingIds = await findExistingCalendarEventIds(run.id, accessToken);
+        if (!existingIds.length) {
+          missingRunIds.push(run.id);
+        }
+      }
+
+      return NextResponse.json({ ok: true, configured: true, missingRunIds });
+    } catch (error) {
+      console.error("Google Calendar reconcile failed", {
+        runCount: body.runs.length,
+        error: error instanceof Error ? error.message : error,
+      });
+      return NextResponse.json(
+        { ok: false, configured: true, error: error instanceof Error ? error.message : "Calendar reconcile failed." },
+        { status: 502 },
+      );
+    }
+  }
 
   if (!body.run?.id || !body.run.date || !body.run.title || !body.action) {
     return NextResponse.json({ ok: false, error: "Missing run calendar sync payload." }, { status: 400 });

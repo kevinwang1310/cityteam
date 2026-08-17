@@ -822,6 +822,26 @@ async function syncUpcomingRunCalendar(action: "upsert" | "delete", run: Upcomin
   return payload;
 }
 
+async function reconcileUpcomingRunsCalendar(runs: UpcomingRun[]) {
+  const response = await fetch("/api/google-calendar/upcoming-run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "reconcile", runs }),
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    configured?: boolean;
+    missingRunIds?: string[];
+    error?: string;
+  };
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error ?? "Google Calendar reconcile failed.");
+  }
+
+  return payload;
+}
+
 async function insertRunner(runner: Runner) {
   return supabaseRequest<SupabaseRunnerRow[]>("runners", {
     method: "POST",
@@ -909,6 +929,7 @@ export default function Home() {
   const [newRunner, setNewRunner] = useState({ firstName: "", lastName: "", notes: "" });
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
+  const lastCalendarRefreshKeyRef = useRef("");
   const adminName = state.admins[0] ?? configuredAdmins[0] ?? "Admin";
 
   useEffect(() => {
@@ -917,7 +938,8 @@ export default function Home() {
       try {
         const incoming = await loadSupabaseState();
         const today = todayId();
-        setState(incoming);
+        const reconciled = await reconcileUpcomingRunsFromCalendar(incoming, { silent: true });
+        setState(reconciled);
         setTodayRunId(today);
         setConnectionState("connected");
         setMessage("Connected to Supabase.");
@@ -931,6 +953,16 @@ export default function Home() {
   }, []);
 
   const todayDateValue = todayDate();
+  const calendarRefreshKey = useMemo(
+    () =>
+      state.upcomingRuns
+        .filter((run) => run.date >= todayDateValue)
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((run) => `${run.id}:${run.date}:${run.title}`)
+        .join("|"),
+    [state.upcomingRuns, todayDateValue],
+  );
   const todayUpcomingRun = useMemo(
     () => state.upcomingRuns.find((run) => run.date === todayDateValue),
     [state.upcomingRuns, todayDateValue],
@@ -945,6 +977,34 @@ export default function Home() {
     };
   }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
   const isScheduledRunDay = Boolean(todayUpcomingRun);
+
+  useEffect(() => {
+    if (section !== "upcoming" || !hasSupabaseConfig() || !calendarRefreshKey) return;
+    if (lastCalendarRefreshKeyRef.current === calendarRefreshKey) return;
+
+    let cancelled = false;
+    lastCalendarRefreshKeyRef.current = calendarRefreshKey;
+
+    async function refresh() {
+      try {
+        const nextState = await reconcileUpcomingRunsFromCalendar();
+        if (!cancelled && nextState !== state) {
+          setState(nextState);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setConnectionState("error");
+          setMessage(error instanceof Error ? error.message : "Could not refresh upcoming runs from Google Calendar.");
+        }
+      }
+    }
+
+    refresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [section, calendarRefreshKey]);
 
   const todayAttendance = useMemo(
     () => state.attendance.filter((item) => item.runId === todayRunId && item.attended),
@@ -1278,8 +1338,53 @@ export default function Home() {
     }
   }
 
+  async function reconcileUpcomingRunsFromCalendar(
+    currentState = state,
+    options: { silent?: boolean } = {},
+  ): Promise<AppState> {
+    const futureRuns = currentState.upcomingRuns
+      .filter((run) => run.date >= todayDate())
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (!futureRuns.length) return currentState;
+
+    const calendar = await reconcileUpcomingRunsCalendar(futureRuns);
+    const missingRunIds = calendar.missingRunIds ?? [];
+    if (!calendar.configured || !missingRunIds.length) return currentState;
+
+    const missingRunIdSet = new Set(missingRunIds);
+    if (hasSupabaseConfig()) {
+      for (const runId of missingRunIds) {
+        await deleteUpcomingRunRecords(runId);
+      }
+    }
+
+    const nextState = {
+      ...currentState,
+      upcomingRuns: currentState.upcomingRuns.filter((run) => !missingRunIdSet.has(run.id)),
+      upcomingRunVolunteers: currentState.upcomingRunVolunteers.filter(
+        (item) => !missingRunIdSet.has(item.upcomingRunId),
+      ),
+    };
+
+    if (!options.silent) {
+      setConnectionState("connected");
+      setMessage(
+        `${missingRunIds.length} upcoming ${missingRunIds.length === 1 ? "run was" : "runs were"} removed after Calendar refresh.`,
+      );
+    }
+
+    return nextState;
+  }
+
   async function syncAllUpcomingRunsCalendar() {
-    const futureRuns = state.upcomingRuns
+    const reconciledState = await reconcileUpcomingRunsFromCalendar(state, { silent: true });
+    if (reconciledState !== state) {
+      setState(reconciledState);
+    }
+
+    const futureRuns = reconciledState.upcomingRuns
       .filter((run) => run.date >= todayDate())
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date));

@@ -147,6 +147,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /syncUpcomingRunCalendar\("upsert", nextRun\)/);
   assert.match(page, /syncUpcomingRunCalendar\("delete", run\)/);
   assert.match(page, /function syncAllUpcomingRunsCalendar/);
+  assert.match(page, /function reconcileUpcomingRunsCalendar/);
+  assert.match(page, /function reconcileUpcomingRunsFromCalendar/);
   assert.match(page, /onSyncCalendar=\{syncAllUpcomingRunsCalendar\}/);
   assert.match(page, /Sync Calendar/);
   assert.match(page, /Google Calendar updated/);
@@ -242,6 +244,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(calendarRoute, /https:\/\/www\.googleapis\.com\/auth\/calendar\.events/);
   assert.match(calendarRoute, /privateExtendedProperty/);
   assert.match(calendarRoute, /cityteamUpcomingRunId/);
+  assert.match(calendarRoute, /missingRunIds/);
+  assert.match(calendarRoute, /body\.action === "reconcile"/);
   assert.match(calendarRoute, /transparency: "transparent"/);
   assert.match(calendarRoute, /Unsupported calendar sync action/);
   assert.match(css, /--navy:\s*#0b2a42/);
