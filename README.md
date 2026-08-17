@@ -92,6 +92,18 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## Google Calendar Sync
+
+Upcoming Runs can sync add, edit, and delete actions to Google Calendar.
+Configure these server-side environment variables:
+
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`: service account email
+- `GOOGLE_PRIVATE_KEY`: service account private key, with newlines preserved or escaped as `\n`
+- `GOOGLE_CALENDAR_ID`: optional calendar ID override
+
+Share the target Google Calendar with the service account email. The default
+calendar ID is the CityTeam Run Club calendar from the app setup.
+
 ## Learn More
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)

@@ -807,6 +807,21 @@ async function deleteUpcomingRunRecords(runId: string) {
   });
 }
 
+async function syncUpcomingRunCalendar(action: "upsert" | "delete", run: UpcomingRun) {
+  const response = await fetch("/api/google-calendar/upcoming-run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action, run }),
+  });
+
+  const payload = (await response.json()) as { ok?: boolean; configured?: boolean; error?: string };
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error ?? "Google Calendar sync failed.");
+  }
+
+  return payload;
+}
+
 async function insertRunner(runner: Runner) {
   return supabaseRequest<SupabaseRunnerRow[]>("runners", {
     method: "POST",
@@ -1125,11 +1140,20 @@ export default function Home() {
       try {
         await upsertUpcomingRun(run);
         setConnectionState("connected");
-        setMessage(`${run.title} added to upcoming runs.`);
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Upcoming run saved locally, but Supabase did not update.");
+        return;
       }
+    }
+
+    try {
+      const calendar = await syncUpcomingRunCalendar("upsert", run);
+      setConnectionState("connected");
+      setMessage(`${run.title} added to upcoming runs.${calendar.configured ? " Google Calendar updated." : ""}`);
+    } catch (error) {
+      setConnectionState("error");
+      setMessage(error instanceof Error ? error.message : "Upcoming run saved, but Google Calendar did not update.");
     }
   }
 
@@ -1148,11 +1172,20 @@ export default function Home() {
       try {
         await upsertUpcomingRun(nextRun);
         setConnectionState("connected");
-        setMessage("Upcoming run title saved.");
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Run title saved locally, but Supabase did not update.");
+        return;
       }
+    }
+
+    try {
+      const calendar = await syncUpcomingRunCalendar("upsert", nextRun);
+      setConnectionState("connected");
+      setMessage(`Upcoming run title saved.${calendar.configured ? " Google Calendar updated." : ""}`);
+    } catch (error) {
+      setConnectionState("error");
+      setMessage(error instanceof Error ? error.message : "Run title saved, but Google Calendar did not update.");
     }
   }
 
@@ -1228,11 +1261,20 @@ export default function Home() {
       try {
         await deleteUpcomingRunRecords(upcomingRunId);
         setConnectionState("connected");
-        setMessage(`${run.title} removed from upcoming runs.`);
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Upcoming run deleted locally, but Supabase did not update.");
+        return;
       }
+    }
+
+    try {
+      const calendar = await syncUpcomingRunCalendar("delete", run);
+      setConnectionState("connected");
+      setMessage(`${run.title} removed from upcoming runs.${calendar.configured ? " Google Calendar updated." : ""}`);
+    } catch (error) {
+      setConnectionState("error");
+      setMessage(error instanceof Error ? error.message : "Upcoming run deleted, but Google Calendar did not update.");
     }
   }
 
@@ -3416,6 +3458,11 @@ function SettingsSection() {
         <p>
           Profile shoe and join dates need the columns in{" "}
           <code>supabase-profile-fields.sql</code>.
+        </p>
+        <p>
+          Google Calendar sync uses <code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code>,{" "}
+          <code>GOOGLE_PRIVATE_KEY</code>, and optional <code>GOOGLE_CALENDAR_ID</code>. Share the
+          run club calendar with the service account so upcoming run dates can be added and removed.
         </p>
       </div>
     </section>

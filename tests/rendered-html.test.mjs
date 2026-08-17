@@ -56,12 +56,13 @@ test("server-renders the CityTeam Run Club app", async () => {
 });
 
 test("keeps production app files free of starter preview wiring", async () => {
-  const [page, css, layout, packageJson, manifest] = await Promise.all([
+  const [page, css, layout, packageJson, manifest, calendarRoute] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/google-calendar/upcoming-run/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /CityTeam/);
@@ -140,6 +141,14 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /Comebacks/);
   assert.match(page, /function formatCalendarDate/);
   assert.match(page, /function formatMonthHeading/);
+  assert.match(page, /async function syncUpcomingRunCalendar/);
+  assert.match(page, /\/api\/google-calendar\/upcoming-run/);
+  assert.match(page, /syncUpcomingRunCalendar\("upsert", run\)/);
+  assert.match(page, /syncUpcomingRunCalendar\("upsert", nextRun\)/);
+  assert.match(page, /syncUpcomingRunCalendar\("delete", run\)/);
+  assert.match(page, /Google Calendar updated/);
+  assert.match(page, /GOOGLE_SERVICE_ACCOUNT_EMAIL/);
+  assert.match(page, /GOOGLE_PRIVATE_KEY/);
   assert.match(page, /upcomingRunGroups/);
   assert.match(page, /<div className="upcoming-run-list">[\s\S]*<div className="upcoming-run-form">/);
   assert.match(page, /upcoming-month-section/);
@@ -223,6 +232,15 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.doesNotMatch(page, /SHEETS_API|Google Sheets|Apps Script/i);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(manifest, /CityTeam Run Club/);
+  assert.match(calendarRoute, /export const runtime = "nodejs"/);
+  assert.match(calendarRoute, /GOOGLE_CALENDAR_ID/);
+  assert.match(calendarRoute, /GOOGLE_SERVICE_ACCOUNT_EMAIL/);
+  assert.match(calendarRoute, /GOOGLE_PRIVATE_KEY/);
+  assert.match(calendarRoute, /https:\/\/www\.googleapis\.com\/auth\/calendar\.events/);
+  assert.match(calendarRoute, /privateExtendedProperty/);
+  assert.match(calendarRoute, /cityteamUpcomingRunId/);
+  assert.match(calendarRoute, /transparency: "transparent"/);
+  assert.match(calendarRoute, /Unsupported calendar sync action/);
   assert.match(css, /--navy:\s*#0b2a42/);
   const photoModalZIndex = Number(css.match(/\.photo-modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
   const mobileProfileZIndex = Number(css.match(/\.profile-panel\.mobile-profile-open\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
