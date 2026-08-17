@@ -1278,6 +1278,35 @@ export default function Home() {
     }
   }
 
+  async function syncAllUpcomingRunsCalendar() {
+    const futureRuns = state.upcomingRuns
+      .filter((run) => run.date >= todayDate())
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (!futureRuns.length) {
+      setMessage("No upcoming runs to sync.");
+      return;
+    }
+
+    try {
+      let configured = true;
+      for (const run of futureRuns) {
+        const calendar = await syncUpcomingRunCalendar("upsert", run);
+        configured = Boolean(calendar.configured);
+      }
+      setConnectionState("connected");
+      setMessage(
+        configured
+          ? `${futureRuns.length} upcoming ${futureRuns.length === 1 ? "run" : "runs"} synced to Google Calendar.`
+          : "Google Calendar sync is not configured for this environment.",
+      );
+    } catch (error) {
+      setConnectionState("error");
+      setMessage(error instanceof Error ? error.message : "Upcoming runs did not sync to Google Calendar.");
+    }
+  }
+
   async function deleteRunner(runnerId: string) {
     const runner = state.runners.find((candidate) => candidate.id === runnerId);
     if (!runner) return;
@@ -1663,6 +1692,7 @@ export default function Home() {
             onToggleVolunteer={updateUpcomingVolunteer}
             onSetSnackVolunteer={updateUpcomingSnackVolunteer}
             onDeleteRun={deleteUpcomingRun}
+            onSyncCalendar={syncAllUpcomingRunsCalendar}
           />
         )}
         {section === "settings" && <SettingsSection />}
@@ -3150,6 +3180,7 @@ function UpcomingRunsSection({
   onToggleVolunteer,
   onSetSnackVolunteer,
   onDeleteRun,
+  onSyncCalendar,
 }: {
   state: AppState;
   onCreateRun: (date: string, title?: string) => Promise<void>;
@@ -3157,6 +3188,7 @@ function UpcomingRunsSection({
   onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean, note?: string) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
   onDeleteRun: (upcomingRunId: string) => Promise<void>;
+  onSyncCalendar: () => Promise<void>;
 }) {
   const [runDate, setRunDate] = useState(nextSaturdayDate());
   const [runTitle, setRunTitle] = useState("");
@@ -3165,6 +3197,7 @@ function UpcomingRunsSection({
   const [declineNotes, setDeclineNotes] = useState<Record<string, string>>({});
   const [savingTitleId, setSavingTitleId] = useState("");
   const [savingDate, setSavingDate] = useState(false);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
   const activeVolunteers = state.runners
     .filter((runner) => runner.personType === "volunteer" && normalizeRunnerStatus(runner.status) === "active")
     .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
@@ -3190,9 +3223,25 @@ function UpcomingRunsSection({
           <p className="eyebrow">Planning</p>
           <h3>Upcoming Runs</h3>
         </div>
-        <div className="section-counts" aria-label="Upcoming run summary">
-          <span><strong>{upcomingRuns.length}</strong> scheduled</span>
-          <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
+        <div className="upcoming-heading-actions">
+          <div className="section-counts" aria-label="Upcoming run summary">
+            <span><strong>{upcomingRuns.length}</strong> scheduled</span>
+            <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
+          </div>
+          <button
+            className="secondary-action"
+            disabled={!upcomingRuns.length || syncingCalendar}
+            onClick={async () => {
+              setSyncingCalendar(true);
+              try {
+                await onSyncCalendar();
+              } finally {
+                setSyncingCalendar(false);
+              }
+            }}
+          >
+            {syncingCalendar ? "Syncing..." : "Sync Calendar"}
+          </button>
         </div>
       </div>
 

@@ -54,7 +54,8 @@ async function getAccessToken() {
   });
 
   if (!response.ok) {
-    throw new Error(`Google token request failed with ${response.status}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Google token request failed with ${response.status}${errorText ? `: ${errorText}` : ""}`);
   }
 
   const payload = (await response.json()) as { access_token?: string };
@@ -96,7 +97,8 @@ async function googleCalendarRequest(path: string, accessToken: string, init?: R
   });
 
   if (!response.ok && response.status !== 404) {
-    throw new Error(`Google Calendar request failed with ${response.status}`);
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Google Calendar request failed with ${response.status}${errorText ? `: ${errorText}` : ""}`);
   }
 
   return response;
@@ -174,6 +176,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, configured: true });
   } catch (error) {
+    console.error("Google Calendar sync failed", {
+      action: body.action,
+      runId: body.run.id,
+      error: error instanceof Error ? error.message : error,
+    });
     return NextResponse.json(
       { ok: false, configured: true, error: error instanceof Error ? error.message : "Calendar sync failed." },
       { status: 502 },

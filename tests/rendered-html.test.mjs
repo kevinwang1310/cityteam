@@ -146,6 +146,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /syncUpcomingRunCalendar\("upsert", run\)/);
   assert.match(page, /syncUpcomingRunCalendar\("upsert", nextRun\)/);
   assert.match(page, /syncUpcomingRunCalendar\("delete", run\)/);
+  assert.match(page, /function syncAllUpcomingRunsCalendar/);
+  assert.match(page, /onSyncCalendar=\{syncAllUpcomingRunsCalendar\}/);
+  assert.match(page, /Sync Calendar/);
   assert.match(page, /Google Calendar updated/);
   assert.match(page, /GOOGLE_SERVICE_ACCOUNT_EMAIL/);
   assert.match(page, /GOOGLE_PRIVATE_KEY/);
