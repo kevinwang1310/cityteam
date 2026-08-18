@@ -434,6 +434,22 @@ function normalizeTimeValue(time: string | null | undefined) {
   return time ? time.slice(0, 5) : undefined;
 }
 
+function normalizeRunForComparison(run: UpcomingRun) {
+  return {
+    id: run.id,
+    date: run.date,
+    title: run.title,
+    startTime: normalizeTimeValue(run.startTime),
+    endTime: normalizeTimeValue(run.endTime),
+    location: run.location?.trim() || undefined,
+    snackRunnerId: run.snackRunnerId,
+  };
+}
+
+function upcomingRunMatches(a: UpcomingRun, b: UpcomingRun) {
+  return JSON.stringify(normalizeRunForComparison(a)) === JSON.stringify(normalizeRunForComparison(b));
+}
+
 function todayId() {
   return `run-${todayDate()}`;
 }
@@ -873,6 +889,7 @@ async function reconcileUpcomingRunsCalendar(runs: UpcomingRun[]) {
     ok?: boolean;
     configured?: boolean;
     missingRunIds?: string[];
+    syncedRuns?: UpcomingRun[];
     error?: string;
   };
   if (!response.ok || !payload.ok) {
@@ -970,7 +987,12 @@ export default function Home() {
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const previousSectionRef = useRef<Section>(section);
+  const stateRef = useRef<AppState>(state);
   const adminName = state.admins[0] ?? configuredAdmins[0] ?? "Admin";
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     async function load() {
@@ -1018,8 +1040,9 @@ export default function Home() {
 
     async function refresh() {
       try {
-        const nextState = await reconcileUpcomingRunsFromCalendar();
-        if (!cancelled && nextState !== state) {
+        const currentState = stateRef.current;
+        const nextState = await reconcileUpcomingRunsFromCalendar(currentState);
+        if (!cancelled && nextState !== currentState) {
           setState(nextState);
         }
       } catch (error) {
@@ -1034,6 +1057,49 @@ export default function Home() {
 
     return () => {
       cancelled = true;
+    };
+  }, [section]);
+
+  useEffect(() => {
+    if (section !== "upcoming" || !hasSupabaseConfig()) return;
+
+    let cancelled = false;
+    let refreshing = false;
+
+    async function refreshFromCalendar() {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const currentState = stateRef.current;
+        const nextState = await reconcileUpcomingRunsFromCalendar(currentState, { silent: true });
+        if (!cancelled && nextState !== currentState) {
+          setState(nextState);
+          setConnectionState("connected");
+          setMessage("Upcoming runs refreshed from Google Calendar.");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setConnectionState("error");
+          setMessage(error instanceof Error ? error.message : "Could not refresh upcoming runs from Google Calendar.");
+        }
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    const intervalId = window.setInterval(refreshFromCalendar, 30_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshFromCalendar();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [section]);
 
@@ -1393,18 +1459,52 @@ export default function Home() {
 
     const calendar = await reconcileUpcomingRunsCalendar(futureRuns);
     const missingRunIds = calendar.missingRunIds ?? [];
-    if (!calendar.configured || !missingRunIds.length) return currentState;
+    const syncedRuns = (calendar.syncedRuns ?? []).map((run) => ({
+      ...run,
+      startTime: normalizeTimeValue(run.startTime),
+      endTime: normalizeTimeValue(run.endTime),
+      location: run.location?.trim() || undefined,
+    }));
+    if (!calendar.configured || (!missingRunIds.length && !syncedRuns.length)) return currentState;
 
     const missingRunIdSet = new Set(missingRunIds);
+    const syncedRunById = new Map(syncedRuns.map((run) => [run.id, run]));
+    const changedRuns: UpcomingRun[] = [];
+
+    const nextUpcomingRuns = currentState.upcomingRuns
+      .filter((run) => !missingRunIdSet.has(run.id))
+      .map((run) => {
+        const syncedRun = syncedRunById.get(run.id);
+        if (!syncedRun) return run;
+
+        const nextRun = {
+          ...run,
+          ...syncedRun,
+          snackRunnerId: run.snackRunnerId,
+        };
+
+        if (!upcomingRunMatches(run, nextRun)) {
+          changedRuns.push(nextRun);
+        }
+
+        return nextRun;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (!missingRunIds.length && !changedRuns.length) return currentState;
+
     if (hasSupabaseConfig()) {
       for (const runId of missingRunIds) {
         await deleteUpcomingRunRecords(runId);
+      }
+      for (const run of changedRuns) {
+        await upsertUpcomingRun(run);
       }
     }
 
     const nextState = {
       ...currentState,
-      upcomingRuns: currentState.upcomingRuns.filter((run) => !missingRunIdSet.has(run.id)),
+      upcomingRuns: nextUpcomingRuns,
       upcomingRunVolunteers: currentState.upcomingRunVolunteers.filter(
         (item) => !missingRunIdSet.has(item.upcomingRunId),
       ),
@@ -1412,9 +1512,14 @@ export default function Home() {
 
     if (!options.silent) {
       setConnectionState("connected");
-      setMessage(
-        `${missingRunIds.length} upcoming ${missingRunIds.length === 1 ? "run was" : "runs were"} removed after Calendar refresh.`,
-      );
+      const messages = [];
+      if (missingRunIds.length) {
+        messages.push(`${missingRunIds.length} removed`);
+      }
+      if (changedRuns.length) {
+        messages.push(`${changedRuns.length} updated`);
+      }
+      setMessage(`Calendar refresh complete: ${messages.join(", ")}.`);
     }
 
     return nextState;

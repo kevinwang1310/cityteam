@@ -14,6 +14,22 @@ type CalendarRun = {
   location?: string;
 };
 
+type GoogleCalendarEvent = {
+  id?: string;
+  summary?: string;
+  location?: string;
+  start?: {
+    date?: string;
+    dateTime?: string;
+    timeZone?: string;
+  };
+  end?: {
+    date?: string;
+    dateTime?: string;
+    timeZone?: string;
+  };
+};
+
 const calendarId =
   process.env.GOOGLE_CALENDAR_ID ??
   "47be234f69aaa3b1aebc1cbef957fc1ca345920bb79c00dd9a354a8c6b2d788a@group.calendar.google.com";
@@ -125,7 +141,30 @@ async function googleCalendarRequest(path: string, accessToken: string, init?: R
   return response;
 }
 
-async function findExistingCalendarEventIds(runId: string, accessToken: string) {
+function datePartFromCalendarDateTime(value: string | undefined) {
+  return value?.slice(0, 10);
+}
+
+function timePartFromCalendarDateTime(value: string | undefined) {
+  return value?.slice(11, 16);
+}
+
+function calendarRunFromEvent(fallbackRun: CalendarRun, event: GoogleCalendarEvent): CalendarRun {
+  const date = event.start?.date ?? datePartFromCalendarDateTime(event.start?.dateTime) ?? fallbackRun.date;
+  const startTime = timePartFromCalendarDateTime(event.start?.dateTime);
+  const endTime = timePartFromCalendarDateTime(event.end?.dateTime);
+
+  return {
+    ...fallbackRun,
+    date,
+    title: event.summary?.trim() || fallbackRun.title,
+    startTime,
+    endTime,
+    location: event.location?.trim() || undefined,
+  };
+}
+
+async function findExistingCalendarEvents(runId: string, accessToken: string) {
   const params = new URLSearchParams({
     privateExtendedProperty: `cityteamUpcomingRunId=${runId}`,
     showDeleted: "false",
@@ -135,8 +174,13 @@ async function findExistingCalendarEventIds(runId: string, accessToken: string) 
     `calendars/${encodeURIComponent(calendarId)}/events?${params}`,
     accessToken,
   );
-  const payload = (await response.json()) as { items?: Array<{ id?: string }> };
-  return (payload.items ?? []).map((item) => item.id).filter((id): id is string => Boolean(id));
+  const payload = (await response.json()) as { items?: GoogleCalendarEvent[] };
+  return payload.items ?? [];
+}
+
+async function findExistingCalendarEventIds(runId: string, accessToken: string) {
+  const events = await findExistingCalendarEvents(runId, accessToken);
+  return events.map((item) => item.id).filter((id): id is string => Boolean(id));
 }
 
 async function upsertCalendarEvent(run: CalendarRun, accessToken: string) {
@@ -187,19 +231,22 @@ export async function POST(request: NextRequest) {
     try {
       const accessToken = await getAccessToken();
       const missingRunIds: string[] = [];
+      const syncedRuns: CalendarRun[] = [];
 
       for (const run of body.runs) {
         if (!run.id || !run.date || !run.title) {
           return NextResponse.json({ ok: false, error: "Invalid run calendar reconcile payload." }, { status: 400 });
         }
 
-        const existingIds = await findExistingCalendarEventIds(run.id, accessToken);
-        if (!existingIds.length) {
+        const existingEvents = await findExistingCalendarEvents(run.id, accessToken);
+        if (!existingEvents.length) {
           missingRunIds.push(run.id);
+        } else {
+          syncedRuns.push(calendarRunFromEvent(run, existingEvents[0]));
         }
       }
 
-      return NextResponse.json({ ok: true, configured: true, missingRunIds });
+      return NextResponse.json({ ok: true, configured: true, missingRunIds, syncedRuns });
     } catch (error) {
       console.error("Google Calendar reconcile failed", {
         runCount: body.runs.length,

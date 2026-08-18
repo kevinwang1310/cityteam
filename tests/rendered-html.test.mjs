@@ -148,6 +148,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /syncUpcomingRunCalendar\("delete", run\)/);
   assert.match(page, /function reconcileUpcomingRunsCalendar/);
   assert.match(page, /function reconcileUpcomingRunsFromCalendar/);
+  assert.match(page, /syncedRuns/);
+  assert.match(page, /Upcoming runs refreshed from Google Calendar/);
   assert.doesNotMatch(page, /Sync Calendar/);
   assert.match(page, /startTime/);
   assert.match(page, /endTime/);
@@ -251,6 +253,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(calendarRoute, /dateTime/);
   assert.match(calendarRoute, /America\/Los_Angeles/);
   assert.match(calendarRoute, /location: run\.location/);
+  assert.match(calendarRoute, /calendarRunFromEvent/);
+  assert.match(calendarRoute, /syncedRuns/);
   assert.match(calendarRoute, /missingRunIds/);
   assert.match(calendarRoute, /body\.action === "reconcile"/);
   assert.match(calendarRoute, /transparency: "transparent"/);
