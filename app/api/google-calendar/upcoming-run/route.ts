@@ -28,6 +28,11 @@ type GoogleCalendarEvent = {
     dateTime?: string;
     timeZone?: string;
   };
+  extendedProperties?: {
+    private?: {
+      cityteamUpcomingRunId?: string;
+    };
+  };
 };
 
 const calendarId =
@@ -183,6 +188,39 @@ async function findExistingCalendarEventIds(runId: string, accessToken: string) 
   return events.map((item) => item.id).filter((id): id is string => Boolean(id));
 }
 
+async function listCalendarEventsForRuns(runs: CalendarRun[], accessToken: string) {
+  const sortedRuns = runs.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const firstRun = sortedRuns[0];
+  const lastRun = sortedRuns[sortedRuns.length - 1];
+  if (!firstRun || !lastRun) return [];
+
+  const events: GoogleCalendarEvent[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      timeMin: `${firstRun.date}T00:00:00-07:00`,
+      timeMax: `${nextDate(lastRun.date)}T23:59:59-07:00`,
+      singleEvents: "true",
+      showDeleted: "false",
+      maxResults: "2500",
+    });
+    if (pageToken) {
+      params.set("pageToken", pageToken);
+    }
+
+    const response = await googleCalendarRequest(
+      `calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      accessToken,
+    );
+    const payload = (await response.json()) as { items?: GoogleCalendarEvent[]; nextPageToken?: string };
+    events.push(...(payload.items ?? []));
+    pageToken = payload.nextPageToken;
+  } while (pageToken);
+
+  return events;
+}
+
 async function upsertCalendarEvent(run: CalendarRun, accessToken: string) {
   const existingIds = await findExistingCalendarEventIds(run.id, accessToken);
   const eventBody = JSON.stringify(calendarEventForRun(run));
@@ -237,12 +275,24 @@ export async function POST(request: NextRequest) {
         if (!run.id || !run.date || !run.title) {
           return NextResponse.json({ ok: false, error: "Invalid run calendar reconcile payload." }, { status: 400 });
         }
+      }
 
-        const existingEvents = await findExistingCalendarEvents(run.id, accessToken);
-        if (!existingEvents.length) {
+      const runById = new Map(body.runs.map((run) => [run.id, run]));
+      const eventByRunId = new Map<string, GoogleCalendarEvent>();
+
+      for (const event of await listCalendarEventsForRuns(body.runs, accessToken)) {
+        const runId = event.extendedProperties?.private?.cityteamUpcomingRunId;
+        if (runId && runById.has(runId) && !eventByRunId.has(runId)) {
+          eventByRunId.set(runId, event);
+        }
+      }
+
+      for (const run of body.runs) {
+        const existingEvent = eventByRunId.get(run.id);
+        if (!existingEvent) {
           missingRunIds.push(run.id);
         } else {
-          syncedRuns.push(calendarRunFromEvent(run, existingEvents[0]));
+          syncedRuns.push(calendarRunFromEvent(run, existingEvent));
         }
       }
 

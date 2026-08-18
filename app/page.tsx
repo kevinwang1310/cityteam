@@ -982,6 +982,7 @@ export default function Home() {
       ? "Connecting to Supabase..."
       : "Demo mode. Add the Supabase URL and publishable key to save changes.",
   );
+  const [upcomingCalendarRefreshing, setUpcomingCalendarRefreshing] = useState(false);
   const [newRunnerOpen, setNewRunnerOpen] = useState(false);
   const [newRunner, setNewRunner] = useState({ firstName: "", lastName: "", notes: "" });
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
@@ -1000,11 +1001,25 @@ export default function Home() {
       try {
         const incoming = await loadSupabaseState();
         const today = todayId();
-        const reconciled = await reconcileUpcomingRunsFromCalendar(incoming, { silent: true });
-        setState(reconciled);
+        setState(incoming);
+        stateRef.current = incoming;
         setTodayRunId(today);
         setConnectionState("connected");
         setMessage("Connected to Supabase.");
+
+        try {
+          const reconciled = await reconcileUpcomingRunsFromCalendar(incoming, { silent: true });
+          if (reconciled !== incoming) {
+            setState(reconciled);
+            stateRef.current = reconciled;
+          }
+        } catch (calendarError) {
+          setMessage(
+            calendarError instanceof Error
+              ? `Connected to Supabase. Calendar refresh failed: ${calendarError.message}`
+              : "Connected to Supabase. Calendar refresh failed.",
+          );
+        }
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Could not connect to Supabase.");
@@ -1040,15 +1055,21 @@ export default function Home() {
 
     async function refresh() {
       try {
+        setUpcomingCalendarRefreshing(true);
         const currentState = stateRef.current;
         const nextState = await reconcileUpcomingRunsFromCalendar(currentState);
         if (!cancelled && nextState !== currentState) {
           setState(nextState);
+          stateRef.current = nextState;
         }
       } catch (error) {
         if (!cancelled) {
           setConnectionState("error");
           setMessage(error instanceof Error ? error.message : "Could not refresh upcoming runs from Google Calendar.");
+        }
+      } finally {
+        if (!cancelled) {
+          setUpcomingCalendarRefreshing(false);
         }
       }
     }
@@ -1070,10 +1091,12 @@ export default function Home() {
       if (refreshing) return;
       refreshing = true;
       try {
+        setUpcomingCalendarRefreshing(true);
         const currentState = stateRef.current;
         const nextState = await reconcileUpcomingRunsFromCalendar(currentState, { silent: true });
         if (!cancelled && nextState !== currentState) {
           setState(nextState);
+          stateRef.current = nextState;
           setConnectionState("connected");
           setMessage("Upcoming runs refreshed from Google Calendar.");
         }
@@ -1084,6 +1107,9 @@ export default function Home() {
         }
       } finally {
         refreshing = false;
+        if (!cancelled) {
+          setUpcomingCalendarRefreshing(false);
+        }
       }
     }
 
@@ -1910,6 +1936,8 @@ export default function Home() {
             onToggleVolunteer={updateUpcomingVolunteer}
             onSetSnackVolunteer={updateUpcomingSnackVolunteer}
             onDeleteRun={deleteUpcomingRun}
+            isRefreshingCalendar={upcomingCalendarRefreshing}
+            isLoading={connectionState === "loading"}
           />
         )}
         {section === "settings" && <SettingsSection />}
@@ -3397,6 +3425,8 @@ function UpcomingRunsSection({
   onToggleVolunteer,
   onSetSnackVolunteer,
   onDeleteRun,
+  isRefreshingCalendar,
+  isLoading,
 }: {
   state: AppState;
   onCreateRun: (run: Omit<UpcomingRun, "id">) => Promise<void>;
@@ -3404,6 +3434,8 @@ function UpcomingRunsSection({
   onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean, note?: string) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
   onDeleteRun: (upcomingRunId: string) => Promise<void>;
+  isRefreshingCalendar: boolean;
+  isLoading: boolean;
 }) {
   const [runDate, setRunDate] = useState(nextSaturdayDate());
   const [runTitle, setRunTitle] = useState("");
@@ -3443,11 +3475,17 @@ function UpcomingRunsSection({
         <div className="section-counts" aria-label="Upcoming run summary">
           <span><strong>{upcomingRuns.length}</strong> scheduled</span>
           <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
+          {isRefreshingCalendar && <span className="refresh-status">Refreshing calendar</span>}
         </div>
       </div>
 
       <div className="upcoming-run-list">
-        {upcomingRuns.length ? (
+        {isLoading && !upcomingRuns.length ? (
+          <div className="empty-state loading-state" role="status" aria-live="polite">
+            <strong>Loading upcoming runs...</strong>
+            <p>Getting the latest schedule from Supabase and Google Calendar.</p>
+          </div>
+        ) : upcomingRuns.length ? (
           upcomingRunGroups.map((group) => (
             <section key={group.month} className="upcoming-month-section">
               <div className="upcoming-month-heading">

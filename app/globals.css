@@ -1285,6 +1285,12 @@ a.nav-item {
   font-size: 1rem;
 }
 
+.section-counts .refresh-status {
+  color: var(--blue);
+  background: rgba(51, 139, 215, 0.1);
+  border-color: rgba(51, 139, 215, 0.22);
+}
+
 .directory-filters {
   display: grid;
   gap: 10px;
@@ -2501,6 +2507,26 @@ a.nav-item {
 
 .empty-state strong {
   color: var(--navy);
+}
+
+.loading-state {
+  position: relative;
+}
+
+.loading-state::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(51, 139, 215, 0.16);
+  border-top-color: var(--blue);
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .setup-panel {
