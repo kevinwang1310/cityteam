@@ -9,6 +9,9 @@ type CalendarRun = {
   id: string;
   date: string;
   title: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
 };
 
 const calendarId =
@@ -71,12 +74,30 @@ function nextDate(date: string) {
   return value.toISOString().slice(0, 10);
 }
 
+function isTimeValue(value: string | undefined) {
+  return Boolean(value && /^\d{2}:\d{2}$/.test(value));
+}
+
+function hasValidTimeRange(run: Pick<CalendarRun, "startTime" | "endTime">) {
+  if (!run.startTime && !run.endTime) return true;
+  if (!isTimeValue(run.startTime) || !isTimeValue(run.endTime)) return false;
+  const { startTime, endTime } = run as { startTime: string; endTime: string };
+  return endTime > startTime;
+}
+
 function calendarEventForRun(run: CalendarRun) {
+  const hasTimes = isTimeValue(run.startTime) && isTimeValue(run.endTime);
+
   return {
     summary: run.title,
     description: `CityTeam Run Club upcoming run.\n\nRun ID: ${run.id}`,
-    start: { date: run.date },
-    end: { date: nextDate(run.date) },
+    location: run.location?.trim() || undefined,
+    start: hasTimes
+      ? { dateTime: `${run.date}T${run.startTime}:00`, timeZone: "America/Los_Angeles" }
+      : { date: run.date },
+    end: hasTimes
+      ? { dateTime: `${run.date}T${run.endTime}:00`, timeZone: "America/Los_Angeles" }
+      : { date: nextDate(run.date) },
     transparency: "transparent",
     extendedProperties: {
       private: {
@@ -193,6 +214,10 @@ export async function POST(request: NextRequest) {
 
   if (!body.run?.id || !body.run.date || !body.run.title || !body.action) {
     return NextResponse.json({ ok: false, error: "Missing run calendar sync payload." }, { status: 400 });
+  }
+
+  if (!hasValidTimeRange(body.run)) {
+    return NextResponse.json({ ok: false, error: "Run end time must be after start time." }, { status: 400 });
   }
 
   if (body.action !== "upsert" && body.action !== "delete") {

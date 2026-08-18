@@ -51,6 +51,9 @@ type UpcomingRun = {
   id: string;
   date: string;
   title: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
   snackRunnerId?: string;
 };
 
@@ -125,6 +128,9 @@ type SupabaseUpcomingRunRow = {
   id: string;
   run_date: string;
   title: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  location?: string | null;
   snack_runner_id: string | null;
 };
 
@@ -398,6 +404,34 @@ function formatMonthHeading(date: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${date}T12:00:00-07:00`));
+}
+
+function formatTimeLabel(time: string | undefined) {
+  if (!time) return "";
+  const [hour, minute] = time.slice(0, 5).split(":").map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(2026, 0, 1, hour, minute));
+}
+
+function formatRunSchedule(run: UpcomingRun) {
+  const date = formatShortDate(run.date);
+  const start = formatTimeLabel(run.startTime);
+  const end = formatTimeLabel(run.endTime);
+  const time = start && end ? `${start} - ${end}` : start || end;
+  return [date, time, run.location].filter(Boolean).join(" | ");
+}
+
+function hasValidTimeRange(run: Pick<UpcomingRun, "startTime" | "endTime">) {
+  if (!run.startTime && !run.endTime) return true;
+  if (!run.startTime || !run.endTime) return false;
+  return run.endTime > run.startTime;
+}
+
+function normalizeTimeValue(time: string | null | undefined) {
+  return time ? time.slice(0, 5) : undefined;
 }
 
 function todayId() {
@@ -681,6 +715,9 @@ function fromUpcomingRunRow(row: SupabaseUpcomingRunRow): UpcomingRun {
     id: row.id,
     date: row.run_date,
     title: row.title,
+    startTime: normalizeTimeValue(row.start_time),
+    endTime: normalizeTimeValue(row.end_time),
+    location: row.location ?? undefined,
     snackRunnerId: row.snack_runner_id ?? undefined,
   };
 }
@@ -690,6 +727,9 @@ function toUpcomingRunRow(run: UpcomingRun): SupabaseUpcomingRunRow {
     id: run.id,
     run_date: run.date,
     title: run.title,
+    start_time: run.startTime || null,
+    end_time: run.endTime || null,
+    location: run.location || null,
     snack_runner_id: run.snackRunnerId || null,
   };
 }
@@ -1172,12 +1212,16 @@ export default function Home() {
     }
   }
 
-  async function createUpcomingRun(date: string, title?: string) {
+  async function createUpcomingRun(runInput: Omit<UpcomingRun, "id">) {
+    const date = runInput.date;
     if (!date) return;
     const run: UpcomingRun = {
       id: `upcoming-${date}`,
       date,
-      title: title?.trim() || `${formatShortDate(date)} Run`,
+      title: runInput.title?.trim() || `${formatShortDate(date)} Run`,
+      startTime: runInput.startTime,
+      endTime: runInput.endTime,
+      location: runInput.location?.trim() || undefined,
     };
 
     setState((current) => ({
@@ -1208,11 +1252,18 @@ export default function Home() {
     }
   }
 
-  async function updateUpcomingRunTitle(upcomingRunId: string, title: string) {
+  async function updateUpcomingRunDetails(upcomingRunId: string, updates: Omit<UpcomingRun, "id">) {
     const currentRun = state.upcomingRuns.find((run) => run.id === upcomingRunId);
-    const cleanTitle = title.trim();
+    const cleanTitle = updates.title.trim();
     if (!currentRun || !cleanTitle) return;
-    const nextRun = { ...currentRun, title: cleanTitle };
+    const nextRun = {
+      ...currentRun,
+      date: updates.date || currentRun.date,
+      title: cleanTitle,
+      startTime: updates.startTime,
+      endTime: updates.endTime,
+      location: updates.location?.trim() || undefined,
+    };
 
     setState((current) => ({
       ...current,
@@ -1225,7 +1276,7 @@ export default function Home() {
         setConnectionState("connected");
       } catch (error) {
         setConnectionState("error");
-        setMessage(error instanceof Error ? error.message : "Run title saved locally, but Supabase did not update.");
+        setMessage(error instanceof Error ? error.message : "Run details saved locally, but Supabase did not update.");
         return;
       }
     }
@@ -1233,10 +1284,10 @@ export default function Home() {
     try {
       const calendar = await syncUpcomingRunCalendar("upsert", nextRun);
       setConnectionState("connected");
-      setMessage(`Upcoming run title saved.${calendar.configured ? " Google Calendar updated." : ""}`);
+      setMessage(`Upcoming run details saved.${calendar.configured ? " Google Calendar updated." : ""}`);
     } catch (error) {
       setConnectionState("error");
-      setMessage(error instanceof Error ? error.message : "Run title saved, but Google Calendar did not update.");
+      setMessage(error instanceof Error ? error.message : "Run details saved, but Google Calendar did not update.");
     }
   }
 
@@ -1367,40 +1418,6 @@ export default function Home() {
     }
 
     return nextState;
-  }
-
-  async function syncAllUpcomingRunsCalendar() {
-    const reconciledState = await reconcileUpcomingRunsFromCalendar(state, { silent: true });
-    if (reconciledState !== state) {
-      setState(reconciledState);
-    }
-
-    const futureRuns = reconciledState.upcomingRuns
-      .filter((run) => run.date >= todayDate())
-      .slice()
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    if (!futureRuns.length) {
-      setMessage("No upcoming runs to sync.");
-      return;
-    }
-
-    try {
-      let configured = true;
-      for (const run of futureRuns) {
-        const calendar = await syncUpcomingRunCalendar("upsert", run);
-        configured = Boolean(calendar.configured);
-      }
-      setConnectionState("connected");
-      setMessage(
-        configured
-          ? `${futureRuns.length} upcoming ${futureRuns.length === 1 ? "run" : "runs"} synced to Google Calendar.`
-          : "Google Calendar sync is not configured for this environment.",
-      );
-    } catch (error) {
-      setConnectionState("error");
-      setMessage(error instanceof Error ? error.message : "Upcoming runs did not sync to Google Calendar.");
-    }
   }
 
   async function deleteRunner(runnerId: string) {
@@ -1784,11 +1801,10 @@ export default function Home() {
           <UpcomingRunsSection
             state={state}
             onCreateRun={createUpcomingRun}
-            onUpdateRunTitle={updateUpcomingRunTitle}
+            onUpdateRunDetails={updateUpcomingRunDetails}
             onToggleVolunteer={updateUpcomingVolunteer}
             onSetSnackVolunteer={updateUpcomingSnackVolunteer}
             onDeleteRun={deleteUpcomingRun}
-            onSyncCalendar={syncAllUpcomingRunsCalendar}
           />
         )}
         {section === "settings" && <SettingsSection />}
@@ -3272,28 +3288,28 @@ function RunsSection({
 function UpcomingRunsSection({
   state,
   onCreateRun,
-  onUpdateRunTitle,
+  onUpdateRunDetails,
   onToggleVolunteer,
   onSetSnackVolunteer,
   onDeleteRun,
-  onSyncCalendar,
 }: {
   state: AppState;
-  onCreateRun: (date: string, title?: string) => Promise<void>;
-  onUpdateRunTitle: (upcomingRunId: string, title: string) => Promise<void>;
+  onCreateRun: (run: Omit<UpcomingRun, "id">) => Promise<void>;
+  onUpdateRunDetails: (upcomingRunId: string, updates: Omit<UpcomingRun, "id">) => Promise<void>;
   onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean, note?: string) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
   onDeleteRun: (upcomingRunId: string) => Promise<void>;
-  onSyncCalendar: () => Promise<void>;
 }) {
   const [runDate, setRunDate] = useState(nextSaturdayDate());
   const [runTitle, setRunTitle] = useState("");
+  const [runStartTime, setRunStartTime] = useState("08:00");
+  const [runEndTime, setRunEndTime] = useState("09:00");
+  const [runLocation, setRunLocation] = useState("");
   const [expandedRunId, setExpandedRunId] = useState("");
-  const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
+  const [detailDrafts, setDetailDrafts] = useState<Record<string, Omit<UpcomingRun, "id">>>({});
   const [declineNotes, setDeclineNotes] = useState<Record<string, string>>({});
   const [savingTitleId, setSavingTitleId] = useState("");
   const [savingDate, setSavingDate] = useState(false);
-  const [syncingCalendar, setSyncingCalendar] = useState(false);
   const activeVolunteers = state.runners
     .filter((runner) => runner.personType === "volunteer" && normalizeRunnerStatus(runner.status) === "active")
     .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
@@ -3319,25 +3335,9 @@ function UpcomingRunsSection({
           <p className="eyebrow">Planning</p>
           <h3>Upcoming Runs</h3>
         </div>
-        <div className="upcoming-heading-actions">
-          <div className="section-counts" aria-label="Upcoming run summary">
-            <span><strong>{upcomingRuns.length}</strong> scheduled</span>
-            <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
-          </div>
-          <button
-            className="secondary-action"
-            disabled={!upcomingRuns.length || syncingCalendar}
-            onClick={async () => {
-              setSyncingCalendar(true);
-              try {
-                await onSyncCalendar();
-              } finally {
-                setSyncingCalendar(false);
-              }
-            }}
-          >
-            {syncingCalendar ? "Syncing..." : "Sync Calendar"}
-          </button>
+        <div className="section-counts" aria-label="Upcoming run summary">
+          <span><strong>{upcomingRuns.length}</strong> scheduled</span>
+          <span><strong>{activeVolunteers.length}</strong> active volunteers</span>
         </div>
       </div>
 
@@ -3362,7 +3362,14 @@ function UpcomingRunsSection({
                   );
                   const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
                   const isExpanded = expandedRunId === run.id;
-                  const titleDraft = titleDrafts[run.id] ?? run.title;
+                  const detailDraft = detailDrafts[run.id] ?? {
+                    date: run.date,
+                    title: run.title,
+                    startTime: run.startTime ?? "",
+                    endTime: run.endTime ?? "",
+                    location: run.location ?? "",
+                  };
+                  const detailDraftIsValid = hasValidTimeRange(detailDraft);
                   const calendarDate = formatCalendarDate(run.date);
             return (
               <article
@@ -3376,6 +3383,7 @@ function UpcomingRunsSection({
                   </div>
                   <div className="upcoming-run-title-block">
                     <strong>{run.title}</strong>
+                    <small>{formatRunSchedule(run)}</small>
                   </div>
                   <div className="upcoming-run-metrics" aria-label={`${volunteerRecords.length} volunteers confirmed, ${declinedRecords.length} declined`}>
                     <div className="metric-card volunteers-confirmed">
@@ -3411,28 +3419,85 @@ function UpcomingRunsSection({
 
                 {isExpanded && (
                   <div className="upcoming-run-details">
-                    <div className="upcoming-title-editor">
+                    <div className="upcoming-title-editor upcoming-details-editor">
+                      <label>
+                        <span>Run date</span>
+                        <input
+                          type="date"
+                          value={detailDraft.date}
+                          onChange={(event) =>
+                            setDetailDrafts((current) => ({
+                              ...current,
+                              [run.id]: { ...detailDraft, date: event.target.value },
+                            }))
+                          }
+                        />
+                      </label>
                       <label>
                         <span>Run title</span>
                         <input
-                          value={titleDraft}
-                          onChange={(event) => setTitleDrafts((current) => ({ ...current, [run.id]: event.target.value }))}
+                          value={detailDraft.title}
+                          onChange={(event) =>
+                            setDetailDrafts((current) => ({
+                              ...current,
+                              [run.id]: { ...detailDraft, title: event.target.value },
+                            }))
+                          }
                           placeholder="Saturday Run, 5K Race, Shoe Demo..."
+                        />
+                      </label>
+                      <label>
+                        <span>Start time</span>
+                        <input
+                          type="time"
+                          value={detailDraft.startTime ?? ""}
+                          onChange={(event) =>
+                            setDetailDrafts((current) => ({
+                              ...current,
+                              [run.id]: { ...detailDraft, startTime: event.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>End time</span>
+                        <input
+                          type="time"
+                          value={detailDraft.endTime ?? ""}
+                          onChange={(event) =>
+                            setDetailDrafts((current) => ({
+                              ...current,
+                              [run.id]: { ...detailDraft, endTime: event.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Location</span>
+                        <input
+                          value={detailDraft.location ?? ""}
+                          onChange={(event) =>
+                            setDetailDrafts((current) => ({
+                              ...current,
+                              [run.id]: { ...detailDraft, location: event.target.value },
+                            }))
+                          }
+                          placeholder="CityTeam, park, race location..."
                         />
                       </label>
                       <button
                         className="secondary-action"
-                        disabled={!titleDraft.trim() || savingTitleId === run.id}
+                        disabled={!detailDraft.date || !detailDraft.title.trim() || !detailDraftIsValid || savingTitleId === run.id}
                         onClick={async () => {
                           setSavingTitleId(run.id);
                           try {
-                            await onUpdateRunTitle(run.id, titleDraft);
+                            await onUpdateRunDetails(run.id, detailDraft);
                           } finally {
                             setSavingTitleId("");
                           }
                         }}
                       >
-                        {savingTitleId === run.id ? "Saving..." : "Save Title"}
+                        {savingTitleId === run.id ? "Saving..." : "Save Details"}
                       </button>
                     </div>
 
@@ -3549,16 +3614,47 @@ function UpcomingRunsSection({
             placeholder={`${formatShortDate(runDate)} Run`}
           />
         </label>
+        <label>
+          <span>Start time</span>
+          <input
+            type="time"
+            value={runStartTime}
+            onChange={(event) => setRunStartTime(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>End time</span>
+          <input
+            type="time"
+            value={runEndTime}
+            onChange={(event) => setRunEndTime(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Location</span>
+          <input
+            value={runLocation}
+            onChange={(event) => setRunLocation(event.target.value)}
+            placeholder="CityTeam, park, race location..."
+          />
+        </label>
         <button
           className="primary-action"
-          disabled={!runDate || savingDate}
+          disabled={!runDate || !hasValidTimeRange({ startTime: runStartTime, endTime: runEndTime }) || savingDate}
           onClick={async () => {
             setSavingDate(true);
             try {
-              await onCreateRun(runDate, runTitle);
+              await onCreateRun({
+                date: runDate,
+                title: runTitle,
+                startTime: runStartTime,
+                endTime: runEndTime,
+                location: runLocation,
+              });
               setExpandedRunId(`upcoming-${runDate}`);
               setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
               setRunTitle("");
+              setRunLocation("");
             } finally {
               setSavingDate(false);
             }
@@ -3597,7 +3693,7 @@ function SettingsSection() {
         </p>
         <p>
           Upcoming Runs needs the <code>upcoming_runs</code> and{" "}
-          <code>upcoming_run_volunteers</code> tables. Run the SQL in{" "}
+          <code>upcoming_run_volunteers</code> tables, including run time and location columns. Run the SQL in{" "}
           <code>supabase-upcoming-runs.sql</code> in Supabase before using this section live.
         </p>
         <p>

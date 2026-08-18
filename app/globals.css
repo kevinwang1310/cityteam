@@ -1266,14 +1266,6 @@ a.nav-item {
   gap: 8px;
 }
 
-.upcoming-heading-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .section-counts span {
   min-height: 36px;
   border: 1px solid var(--line);
@@ -2107,7 +2099,7 @@ a.nav-item {
 
 .upcoming-run-form {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(150px, 180px) minmax(220px, 1fr) minmax(120px, 140px) minmax(120px, 140px) minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: end;
   margin-top: 16px;
@@ -2403,6 +2395,10 @@ a.nav-item {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
+}
+
+.upcoming-details-editor {
+  grid-template-columns: minmax(150px, 180px) minmax(220px, 1fr) minmax(120px, 140px) minmax(120px, 140px) minmax(220px, 1fr) auto;
 }
 
 .volunteer-rsvp-grid {

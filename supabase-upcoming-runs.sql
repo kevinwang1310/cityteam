@@ -2,6 +2,9 @@ create table if not exists public.upcoming_runs (
   id text primary key,
   run_date date not null,
   title text not null,
+  start_time time,
+  end_time time,
+  location text,
   snack_runner_id text references public.runners(id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -23,3 +26,8 @@ create index if not exists upcoming_run_volunteers_run_idx
 
 alter table public.upcoming_run_volunteers
   add column if not exists note text;
+
+alter table public.upcoming_runs
+  add column if not exists start_time time,
+  add column if not exists end_time time,
+  add column if not exists location text;

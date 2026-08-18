@@ -94,7 +94,7 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 ## Google Calendar Sync
 
-Upcoming Runs can sync add, edit, and delete actions to Google Calendar.
+Upcoming Runs can sync add, edit, delete, time, and location changes to Google Calendar.
 Configure these server-side environment variables:
 
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: service account email

@@ -146,11 +146,15 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /syncUpcomingRunCalendar\("upsert", run\)/);
   assert.match(page, /syncUpcomingRunCalendar\("upsert", nextRun\)/);
   assert.match(page, /syncUpcomingRunCalendar\("delete", run\)/);
-  assert.match(page, /function syncAllUpcomingRunsCalendar/);
   assert.match(page, /function reconcileUpcomingRunsCalendar/);
   assert.match(page, /function reconcileUpcomingRunsFromCalendar/);
-  assert.match(page, /onSyncCalendar=\{syncAllUpcomingRunsCalendar\}/);
-  assert.match(page, /Sync Calendar/);
+  assert.doesNotMatch(page, /Sync Calendar/);
+  assert.match(page, /startTime/);
+  assert.match(page, /endTime/);
+  assert.match(page, /location/);
+  assert.match(page, /Start time/);
+  assert.match(page, /End time/);
+  assert.match(page, /Location/);
   assert.match(page, /Google Calendar updated/);
   assert.match(page, /GOOGLE_SERVICE_ACCOUNT_EMAIL/);
   assert.match(page, /GOOGLE_PRIVATE_KEY/);
@@ -244,6 +248,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(calendarRoute, /https:\/\/www\.googleapis\.com\/auth\/calendar\.events/);
   assert.match(calendarRoute, /privateExtendedProperty/);
   assert.match(calendarRoute, /cityteamUpcomingRunId/);
+  assert.match(calendarRoute, /dateTime/);
+  assert.match(calendarRoute, /America\/Los_Angeles/);
+  assert.match(calendarRoute, /location: run\.location/);
   assert.match(calendarRoute, /missingRunIds/);
   assert.match(calendarRoute, /body\.action === "reconcile"/);
   assert.match(calendarRoute, /transparency: "transparent"/);
