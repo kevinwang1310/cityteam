@@ -91,6 +91,7 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /function roleClassName/);
   assert.match(page, /useState<PersonType \| "all">\("cityteam_client"\)/);
   assert.match(page, /function PeopleSection[\s\S]*useState<PersonType \| "all">\("cityteam_client"\)/);
+  assert.match(page, /className=\{\["person-card", roleClassName\(runner\), selectedRunner\?\.id === runner\.id \? "active" : ""\]/);
   assert.match(page, /const \[selectedRunnerId, setSelectedRunnerId\] = useState<string \| null>\(null\)/);
   assert.match(page, /const selectedRunner = selectedRunnerId \? state\.runners\.find\(\(runner\) => runner\.id === selectedRunnerId\) : undefined/);
   assert.match(page, /function openPeopleProfile\(runnerId: string\)/);
@@ -206,7 +207,7 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.mixed-role-view \.runner-row\.volunteer/);
   assert.match(css, /\.checkin-runner-list/);
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.checkin-runner-list \.runner-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.checkin-runner-list \.runner-main\s*\{[^}]*grid-template-columns:\s*44px minmax\(0, 1fr\);/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.checkin-runner-list \.runner-main\s*\{[^}]*grid-template-columns:\s*62px minmax\(0, 1fr\);/);
   assert.match(css, /\.celebration-dialog/);
   assert.match(css, /\.mixed-role-view \.person-card\.cityteam-client/);
   assert.match(css, /\.mixed-role-view \.person-card\.volunteer/);
@@ -244,6 +245,9 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.calendar-date-tile\s*\{[^}]*width:\s*62px;[^}]*grid-template-columns:\s*1fr;/);
   assert.match(css, /\.metric-card\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.confirmed-volunteer-avatars \.avatar\s*\{[^}]*width:\s*52px;[^}]*height:\s*52px;/s);
+  assert.match(css, /\.checkin-runner-list,[\s\S]*\.people-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(300px, 1fr\)\);/);
+  assert.match(css, /\.runner-main\s*\{[^}]*grid-template-columns:\s*82px minmax\(0, 1fr\);/);
+  assert.match(css, /\.person-card \.avatar\s*\{[^}]*width:\s*82px;[^}]*height:\s*82px;/s);
   assert.match(css, /\.snack-status\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.calendar-date-tile/);
   assert.match(css, /\.upcoming-run-metrics/);

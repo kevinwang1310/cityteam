@@ -309,7 +309,7 @@ a.nav-item {
 
 .run-panel,
 .content-section {
-  padding: 20px;
+  padding: 16px;
 }
 
 .run-summary,
@@ -317,10 +317,10 @@ a.nav-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 14px;
+  margin-bottom: 14px;
   border-bottom: 1px solid rgba(207, 198, 182, 0.7);
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 .run-summary h3,
@@ -378,7 +378,7 @@ a.nav-item {
 .toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
 }
 
 .toolbar input {
@@ -407,7 +407,7 @@ a.nav-item {
 
 .filter-row,
 .new-runner-form {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .new-runner-form {
@@ -422,20 +422,22 @@ a.nav-item {
 
 .runner-list {
   display: grid;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
-.checkin-runner-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.checkin-runner-list,
+.people-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
 .runner-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 12px;
+  min-height: 106px;
+  padding: 10px;
   border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
@@ -475,7 +477,7 @@ a.nav-item {
 .runner-main {
   min-width: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 82px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   border: 0;
@@ -488,6 +490,7 @@ a.nav-item {
   display: block;
   color: var(--ink);
   overflow-wrap: anywhere;
+  line-height: 1.12;
 }
 
 .runner-main small,
@@ -499,19 +502,22 @@ a.nav-item {
 
 .runner-main small {
   display: block;
-  margin-top: 3px;
-  font-size: 0.86rem;
+  margin-top: 5px;
+  font-size: 0.82rem;
   overflow-wrap: anywhere;
 }
 
 .avatar {
-  width: 52px;
-  height: 52px;
+  width: 82px;
+  height: 82px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--navy);
   color: #fff;
   flex: 0 0 auto;
+  box-shadow:
+    0 10px 22px rgba(11, 42, 66, 0.16),
+    0 0 0 3px rgba(255, 255, 255, 0.9);
 }
 
 .avatar.fallback {
@@ -528,7 +534,9 @@ a.nav-item {
 }
 
 .present-toggle {
-  min-width: 106px;
+  min-width: 98px;
+  min-height: 38px;
+  padding: 0 12px;
 }
 
 .present-toggle.active {
@@ -1353,21 +1361,38 @@ a.nav-item {
 
 .people-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
 }
 
 .person-card {
-  min-height: 162px;
+  min-height: 106px;
   border: 1px solid rgba(207, 198, 182, 0.9);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
   display: grid;
-  justify-items: start;
-  gap: 8px;
-  padding: 14px;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
   text-align: left;
   box-shadow: 0 6px 18px rgba(13, 37, 54, 0.04);
+}
+
+.person-card span {
+  min-width: 0;
+}
+
+.person-card small {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.person-card .avatar {
+  width: 82px;
+  height: 82px;
 }
 
 .person-card:hover,
@@ -2738,7 +2763,6 @@ code {
   .upcoming-title-editor,
   .profile-editor,
   .people-layout .profile-editor,
-  .runner-row,
   .row-actions,
   .table-row {
     grid-template-columns: 1fr;
@@ -2755,13 +2779,18 @@ code {
   }
 
   .checkin-runner-list .runner-main {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 62px minmax(0, 1fr);
     gap: 9px;
   }
 
-  .checkin-runner-list .avatar {
-    width: 44px;
-    height: 44px;
+  .person-card {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .checkin-runner-list .avatar,
+  .person-card .avatar {
+    width: 62px;
+    height: 62px;
   }
 
   .checkin-runner-list .runner-main small {
@@ -2850,6 +2879,7 @@ code {
   .profile-stats,
   .celebration-grid,
   .checkin-runner-list,
+  .people-grid,
   .gear-grid {
     grid-template-columns: 1fr;
   }

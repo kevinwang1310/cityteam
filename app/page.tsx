@@ -2705,8 +2705,10 @@ function PeopleSection({
               onClick={() => selectRunner(runner.id)}
             >
               <Avatar runner={runner} />
-              <strong>{runnerName(runner)}</strong>
-              <small>{countAttendance(state, runner.id)} runs</small>
+              <span>
+                <strong>{runnerName(runner)}</strong>
+                <small>{countAttendance(state, runner.id)} runs</small>
+              </span>
             </button>
           ))}
         </div>
