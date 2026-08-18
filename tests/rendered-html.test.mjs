@@ -99,7 +99,10 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /async function createPeopleProfile\(\)/);
   assert.match(page, /firstName: "New"/);
   assert.match(page, /lastName: "Profile"/);
+  assert.match(page, /setNewProfileEditRunnerId\(runner\.id\)/);
   assert.match(page, /onCreateProfile=\{createPeopleProfile\}/);
+  assert.match(page, /startInEditMode=\{selectedRunner\.id === newProfileEditRunnerId\}/);
+  assert.match(page, /useState\(startInEditMode\)/);
   assert.match(page, /\{creatingProfile \? "Creating\.\.\." : "New"\}/);
   assert.match(page, /\{selectedRunner && \([\s\S]*<ProfileCard/);
   assert.doesNotMatch(page, /setSelectedRunnerId\(incoming\.runners\[0\]\?\.id/);

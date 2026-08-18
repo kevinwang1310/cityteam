@@ -983,6 +983,7 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
+  const [newProfileEditRunnerId, setNewProfileEditRunnerId] = useState<string | null>(null);
   const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
   const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
   const [runDayDialogOpen, setRunDayDialogOpen] = useState(false);
@@ -1183,6 +1184,7 @@ export default function Home() {
 
   function openPeopleProfile(runnerId: string) {
     setSelectedRunnerId(runnerId);
+    setNewProfileEditRunnerId(null);
     setMobileProfileOpen(true);
   }
 
@@ -1631,6 +1633,7 @@ export default function Home() {
 
     setState((current) => ({ ...current, runners: [runner, ...current.runners] }));
     setSelectedRunnerId(runner.id);
+    setNewProfileEditRunnerId(runner.id);
     setMobileProfileOpen(true);
 
     if (hasSupabaseConfig()) {
@@ -1764,6 +1767,7 @@ export default function Home() {
       ...current,
       runners: current.runners.map((runner) => (runner.id === runnerId ? nextRunner : runner)),
     }));
+    setNewProfileEditRunnerId((current) => (current === runnerId ? null : current));
 
     if (hasSupabaseConfig()) {
       try {
@@ -1950,6 +1954,7 @@ export default function Home() {
             selectedRunner={selectedRunner}
             selectRunner={openPeopleProfile}
             onCreateProfile={createPeopleProfile}
+            newProfileEditRunnerId={newProfileEditRunnerId}
             onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
             onSaveProfile={saveRunnerProfile}
             onDeleteProfile={deleteRunner}
@@ -2115,6 +2120,7 @@ function ProfileCard({
   onDeleteProfile,
   isMobileOpen,
   onCloseMobile,
+  startInEditMode = false,
 }: {
   runner?: Runner;
   state: AppState;
@@ -2123,9 +2129,10 @@ function ProfileCard({
   onDeleteProfile: (runnerId: string) => Promise<void>;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
+  startInEditMode?: boolean;
 }) {
   const panelRef = useRef<HTMLElement | null>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(startInEditMode);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState(() => profileDraftFromRunner(runner));
@@ -2644,6 +2651,7 @@ function PeopleSection({
   selectedRunner,
   selectRunner,
   onCreateProfile,
+  newProfileEditRunnerId,
   onEditPhoto,
   onSaveProfile,
   onDeleteProfile,
@@ -2654,6 +2662,7 @@ function PeopleSection({
   selectedRunner?: Runner;
   selectRunner: (id: string) => void;
   onCreateProfile: () => Promise<void>;
+  newProfileEditRunnerId: string | null;
   onEditPhoto: (runner: Runner) => void;
   onSaveProfile: (runnerId: string, updates: Partial<Runner>) => Promise<void>;
   onDeleteProfile: (runnerId: string) => Promise<void>;
@@ -2769,6 +2778,7 @@ function PeopleSection({
           onSaveProfile={onSaveProfile}
           onDeleteProfile={onDeleteProfile}
           isMobileOpen={isMobileOpen}
+          startInEditMode={selectedRunner.id === newProfileEditRunnerId}
           onCloseMobile={onCloseMobile}
         />
       )}
