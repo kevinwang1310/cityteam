@@ -2383,12 +2383,9 @@ a.nav-item {
   font-size: 0.8rem;
 }
 
-.upcoming-card-actions {
+.upcoming-run-head .text-action {
   grid-area: action;
   justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .upcoming-delete-action {

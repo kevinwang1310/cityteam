@@ -3554,53 +3554,19 @@ function UpcomingRunsSection({
                     <span>Snacks</span>
                     <strong>{snackVolunteer ? runnerName(snackVolunteer) : "Open"}</strong>
                   </div>
-                  <div className="upcoming-card-actions">
-                    <button
-                      className="text-action"
-                      onClick={() => setExpandedRunId(isExpanded ? "" : run.id)}
-                      aria-expanded={isExpanded}
-                    >
-                      {isExpanded ? "Collapse" : "Details"}
-                    </button>
-                    <button
-                      className="danger-action upcoming-delete-action"
-                      onClick={() => setConfirmingDeleteRunId(run.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <button
+                    className="text-action"
+                    onClick={() => {
+                      setExpandedRunId(isExpanded ? "" : run.id);
+                      if (isExpanded) {
+                        setConfirmingDeleteRunId("");
+                      }
+                    }}
+                    aria-expanded={isExpanded}
+                  >
+                    {isExpanded ? "Collapse" : "Details"}
+                  </button>
                 </div>
-
-                {isConfirmingDelete && (
-                  <div className="delete-confirmation upcoming-delete-confirmation">
-                    <span>
-                      Delete {run.title}? This removes the scheduled run, volunteer RSVPs, and its Google Calendar event.
-                    </span>
-                    <div>
-                      <button className="secondary-action" onClick={() => setConfirmingDeleteRunId("")}>
-                        Cancel
-                      </button>
-                      <button
-                        className="danger-action solid"
-                        disabled={deletingRunId === run.id}
-                        onClick={async () => {
-                          setDeletingRunId(run.id);
-                          try {
-                            await onDeleteRun(run.id);
-                            setConfirmingDeleteRunId("");
-                            if (expandedRunId === run.id) {
-                              setExpandedRunId("");
-                            }
-                          } finally {
-                            setDeletingRunId("");
-                          }
-                        }}
-                      >
-                        {deletingRunId === run.id ? "Deleting..." : "Delete Run"}
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {isExpanded && (
                   <div className="upcoming-run-details">
@@ -3759,6 +3725,44 @@ function UpcomingRunsSection({
                           </div>
                         );
                       })}
+                    </div>
+
+                    <div className="upcoming-run-actions">
+                      {!isConfirmingDelete ? (
+                        <button
+                          className="danger-action upcoming-delete-action"
+                          onClick={() => setConfirmingDeleteRunId(run.id)}
+                        >
+                          Delete Upcoming Run
+                        </button>
+                      ) : (
+                        <div className="delete-confirmation upcoming-delete-confirmation">
+                          <span>
+                            Delete {run.title}? This removes the scheduled run, volunteer RSVPs, and its Google Calendar event.
+                          </span>
+                          <div>
+                            <button className="secondary-action" onClick={() => setConfirmingDeleteRunId("")}>
+                              Cancel
+                            </button>
+                            <button
+                              className="danger-action solid"
+                              disabled={deletingRunId === run.id}
+                              onClick={async () => {
+                                setDeletingRunId(run.id);
+                                try {
+                                  await onDeleteRun(run.id);
+                                  setConfirmingDeleteRunId("");
+                                  setExpandedRunId("");
+                                } finally {
+                                  setDeletingRunId("");
+                                }
+                              }}
+                            >
+                              {deletingRunId === run.id ? "Deleting..." : "Delete Run"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                   </div>
