@@ -373,6 +373,15 @@ const demoState: AppState = {
   ],
 };
 
+const emptyState: AppState = {
+  runners: [],
+  runs: [],
+  attendance: [],
+  upcomingRuns: [],
+  upcomingRunVolunteers: [],
+  admins: configuredAdmins,
+};
+
 const sections: { id: Section; label: string }[] = [
   { id: "checkin", label: "Check In" },
   { id: "people", label: "People" },
@@ -964,7 +973,7 @@ async function updateRunnerGear(
 }
 
 export default function Home() {
-  const [state, setState] = useState<AppState>(demoState);
+  const [state, setState] = useState<AppState>(hasSupabaseConfig() ? emptyState : demoState);
   const [section, setSection] = useState<Section>("checkin");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
@@ -1030,6 +1039,7 @@ export default function Home() {
   }, []);
 
   const todayDateValue = todayDate();
+  const isAppLoading = connectionState === "loading";
   const todayUpcomingRun = useMemo(
     () => state.upcomingRuns.find((run) => run.date === todayDateValue),
     [state.upcomingRuns, todayDateValue],
@@ -1775,7 +1785,13 @@ export default function Home() {
       </aside>
 
       <section className="workspace">
-        {section === "checkin" && (
+        {section === "checkin" && isAppLoading && (
+          <RecordsLoadingState
+            title="Loading check-in..."
+            detail="Getting the complete runner list and attendance records from Supabase."
+          />
+        )}
+        {section === "checkin" && !isAppLoading && (
           <div className={checkinProfileRunner ? "checkin-layout profile-open" : "checkin-layout"}>
             <section className="run-panel">
               <div className="run-summary">
@@ -1893,7 +1909,13 @@ export default function Home() {
           </div>
         )}
 
-        {section === "people" && (
+        {section === "people" && isAppLoading && (
+          <RecordsLoadingState
+            title="Loading people..."
+            detail="Getting all profiles before showing the directory."
+          />
+        )}
+        {section === "people" && !isAppLoading && (
           <PeopleSection
             state={state}
             selectedRunner={selectedRunner}
@@ -1908,7 +1930,13 @@ export default function Home() {
             }}
           />
         )}
-        {section === "celebration" && (
+        {section === "celebration" && isAppLoading && (
+          <RecordsLoadingState
+            title="Loading celebration..."
+            detail="Getting streaks, milestones, and comeback records."
+          />
+        )}
+        {section === "celebration" && !isAppLoading && (
           <RunDayCelebrationSection
             state={state}
             onOpenProfile={(runnerId) => {
@@ -1917,7 +1945,13 @@ export default function Home() {
             }}
           />
         )}
-        {section === "runs" && (
+        {section === "runs" && isAppLoading && (
+          <RecordsLoadingState
+            title="Loading trends..."
+            detail="Getting the full attendance history before drawing charts."
+          />
+        )}
+        {section === "runs" && !isAppLoading && (
           <RunsSection
             state={state}
             onToggleAttendance={updateRunAttendance}
@@ -1928,7 +1962,13 @@ export default function Home() {
             }}
           />
         )}
-        {section === "upcoming" && (
+        {section === "upcoming" && isAppLoading && (
+          <RecordsLoadingState
+            title="Loading upcoming runs..."
+            detail="Getting the latest schedule and volunteer RSVPs."
+          />
+        )}
+        {section === "upcoming" && !isAppLoading && (
           <UpcomingRunsSection
             state={state}
             onCreateRun={createUpcomingRun}
@@ -1937,7 +1977,7 @@ export default function Home() {
             onSetSnackVolunteer={updateUpcomingSnackVolunteer}
             onDeleteRun={deleteUpcomingRun}
             isRefreshingCalendar={upcomingCalendarRefreshing}
-            isLoading={connectionState === "loading"}
+            isLoading={isAppLoading}
           />
         )}
         {section === "settings" && <SettingsSection />}
@@ -2023,6 +2063,18 @@ function profileCardKey(runner?: Runner, isMobileOpen = false) {
     runner.newShoesReceivedDate ?? "",
     isMobileOpen ? "open" : "closed",
   ].join("|");
+}
+
+function RecordsLoadingState({ title, detail }: { title: string; detail: string }) {
+  return (
+    <section className="content-section">
+      <div className="records-loading-state" role="status" aria-live="polite">
+        <span className="loading-spinner" aria-hidden="true" />
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+    </section>
+  );
 }
 
 function ProfileCard({
