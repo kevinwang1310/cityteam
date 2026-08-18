@@ -502,6 +502,10 @@ function runnerName(runner: Runner) {
   return full || "Unnamed runner";
 }
 
+function newRunnerId() {
+  return `runner-${Date.now()}`;
+}
+
 function initials(runner: Runner) {
   return `${runner.firstName[0] ?? ""}${runner.lastName[0] ?? ""}`.toUpperCase();
 }
@@ -1593,7 +1597,7 @@ export default function Home() {
   async function createRunner() {
     if (!newRunner.firstName.trim()) return;
     const runner: Runner = {
-      id: `runner-${Date.now()}`,
+      id: newRunnerId(),
       firstName: newRunner.firstName.trim(),
       lastName: newRunner.lastName.trim(),
       notes: newRunner.notes.trim(),
@@ -1612,6 +1616,31 @@ export default function Home() {
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Runner added locally, but Supabase did not update.");
+      }
+    }
+  }
+
+  async function createPeopleProfile() {
+    const runner: Runner = {
+      id: newRunnerId(),
+      firstName: "New",
+      lastName: "Profile",
+      status: "active",
+      personType: "cityteam_client",
+    };
+
+    setState((current) => ({ ...current, runners: [runner, ...current.runners] }));
+    setSelectedRunnerId(runner.id);
+    setMobileProfileOpen(true);
+
+    if (hasSupabaseConfig()) {
+      try {
+        await insertRunner(runner);
+        setConnectionState("connected");
+        setMessage("New profile created. Add the details and save when ready.");
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Profile created locally, but Supabase did not update.");
       }
     }
   }
@@ -1920,6 +1949,7 @@ export default function Home() {
             state={state}
             selectedRunner={selectedRunner}
             selectRunner={openPeopleProfile}
+            onCreateProfile={createPeopleProfile}
             onEditPhoto={(runner) => setPhotoEditorRunner(runner)}
             onSaveProfile={saveRunnerProfile}
             onDeleteProfile={deleteRunner}
@@ -2613,6 +2643,7 @@ function PeopleSection({
   state,
   selectedRunner,
   selectRunner,
+  onCreateProfile,
   onEditPhoto,
   onSaveProfile,
   onDeleteProfile,
@@ -2622,6 +2653,7 @@ function PeopleSection({
   state: AppState;
   selectedRunner?: Runner;
   selectRunner: (id: string) => void;
+  onCreateProfile: () => Promise<void>;
   onEditPhoto: (runner: Runner) => void;
   onSaveProfile: (runnerId: string, updates: Partial<Runner>) => Promise<void>;
   onDeleteProfile: (runnerId: string) => Promise<void>;
@@ -2631,6 +2663,7 @@ function PeopleSection({
   const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [query, setQuery] = useState("");
+  const [creatingProfile, setCreatingProfile] = useState(false);
   const cleanQuery = query.trim().toLowerCase();
   const visibleRunners = state.runners.filter((runner) => {
     const normalizedStatus = normalizeRunnerStatus(runner.status);
@@ -2673,6 +2706,20 @@ function PeopleSection({
               placeholder="Search by name..."
               aria-label="Search people by name"
             />
+            <button
+              className="primary-action"
+              disabled={creatingProfile}
+              onClick={async () => {
+                setCreatingProfile(true);
+                try {
+                  await onCreateProfile();
+                } finally {
+                  setCreatingProfile(false);
+                }
+              }}
+            >
+              {creatingProfile ? "Creating..." : "New"}
+            </button>
           </div>
           <div className="filter-row" aria-label="People status filter">
             {peopleStatusOptions.map((status) => (

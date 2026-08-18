@@ -96,6 +96,11 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /const selectedRunner = selectedRunnerId \? state\.runners\.find\(\(runner\) => runner\.id === selectedRunnerId\) : undefined/);
   assert.match(page, /function openPeopleProfile\(runnerId: string\)/);
   assert.match(page, /selectRunner=\{openPeopleProfile\}/);
+  assert.match(page, /async function createPeopleProfile\(\)/);
+  assert.match(page, /firstName: "New"/);
+  assert.match(page, /lastName: "Profile"/);
+  assert.match(page, /onCreateProfile=\{createPeopleProfile\}/);
+  assert.match(page, /\{creatingProfile \? "Creating\.\.\." : "New"\}/);
   assert.match(page, /\{selectedRunner && \([\s\S]*<ProfileCard/);
   assert.doesNotMatch(page, /setSelectedRunnerId\(incoming\.runners\[0\]\?\.id/);
   assert.match(page, /type PeopleStatusFilter = "active" \| "inactive" \| "all"/);
