@@ -3446,6 +3446,8 @@ function UpcomingRunsSection({
   const [detailDrafts, setDetailDrafts] = useState<Record<string, Omit<UpcomingRun, "id">>>({});
   const [declineNotes, setDeclineNotes] = useState<Record<string, string>>({});
   const [savingTitleId, setSavingTitleId] = useState("");
+  const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState("");
+  const [deletingRunId, setDeletingRunId] = useState("");
   const [savingDate, setSavingDate] = useState(false);
   const activeVolunteers = state.runners
     .filter((runner) => runner.personType === "volunteer" && normalizeRunnerStatus(runner.status) === "active")
@@ -3505,6 +3507,7 @@ function UpcomingRunsSection({
                   );
                   const snackVolunteer = activeVolunteers.find((volunteer) => volunteer.id === run.snackRunnerId);
                   const isExpanded = expandedRunId === run.id;
+                  const isConfirmingDelete = confirmingDeleteRunId === run.id;
                   const detailDraft = detailDrafts[run.id] ?? {
                     date: run.date,
                     title: run.title,
@@ -3551,14 +3554,53 @@ function UpcomingRunsSection({
                     <span>Snacks</span>
                     <strong>{snackVolunteer ? runnerName(snackVolunteer) : "Open"}</strong>
                   </div>
-                  <button
-                    className="text-action"
-                    onClick={() => setExpandedRunId(isExpanded ? "" : run.id)}
-                    aria-expanded={isExpanded}
-                  >
-                    {isExpanded ? "Collapse" : "Details"}
-                  </button>
+                  <div className="upcoming-card-actions">
+                    <button
+                      className="text-action"
+                      onClick={() => setExpandedRunId(isExpanded ? "" : run.id)}
+                      aria-expanded={isExpanded}
+                    >
+                      {isExpanded ? "Collapse" : "Details"}
+                    </button>
+                    <button
+                      className="danger-action upcoming-delete-action"
+                      onClick={() => setConfirmingDeleteRunId(run.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
+
+                {isConfirmingDelete && (
+                  <div className="delete-confirmation upcoming-delete-confirmation">
+                    <span>
+                      Delete {run.title}? This removes the scheduled run, volunteer RSVPs, and its Google Calendar event.
+                    </span>
+                    <div>
+                      <button className="secondary-action" onClick={() => setConfirmingDeleteRunId("")}>
+                        Cancel
+                      </button>
+                      <button
+                        className="danger-action solid"
+                        disabled={deletingRunId === run.id}
+                        onClick={async () => {
+                          setDeletingRunId(run.id);
+                          try {
+                            await onDeleteRun(run.id);
+                            setConfirmingDeleteRunId("");
+                            if (expandedRunId === run.id) {
+                              setExpandedRunId("");
+                            }
+                          } finally {
+                            setDeletingRunId("");
+                          }
+                        }}
+                      >
+                        {deletingRunId === run.id ? "Deleting..." : "Delete Run"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {isExpanded && (
                   <div className="upcoming-run-details">
@@ -3719,11 +3761,6 @@ function UpcomingRunsSection({
                       })}
                     </div>
 
-                    <div className="upcoming-run-actions">
-                      <button className="danger-action" onClick={() => onDeleteRun(run.id)}>
-                        Delete Upcoming Run
-                      </button>
-                    </div>
                   </div>
                 )}
               </article>
