@@ -162,11 +162,14 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /function reconcileUpcomingRunsFromCalendar/);
   assert.match(page, /syncedRuns/);
   assert.match(page, /Upcoming runs refreshed from Google Calendar/);
-  assert.match(page, /Loading check-in/);
-  assert.match(page, /Loading people/);
-  assert.match(page, /Loading celebration/);
-  assert.match(page, /Loading trends/);
-  assert.match(page, /Loading upcoming runs/);
+  assert.match(page, /function RecordsLoadingState\(\)/);
+  assert.match(page, /loading-shoe/);
+  assert.match(page, /<strong>Loading<\/strong>/);
+  assert.doesNotMatch(page, /Loading check-in/);
+  assert.doesNotMatch(page, /Loading people/);
+  assert.doesNotMatch(page, /Loading celebration/);
+  assert.doesNotMatch(page, /Loading trends/);
+  assert.doesNotMatch(page, /Loading upcoming runs/);
   assert.match(page, /Refreshing calendar/);
   assert.doesNotMatch(page, /Sync Calendar/);
   assert.match(page, /startTime/);
@@ -256,6 +259,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(css, /\.checkin-runner-list,[\s\S]*\.people-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(300px, 1fr\)\);/);
   assert.match(css, /\.runner-main\s*\{[^}]*grid-template-columns:\s*82px minmax\(0, 1fr\);/);
   assert.match(css, /\.person-card \.avatar\s*\{[^}]*width:\s*82px;[^}]*height:\s*82px;/s);
+  assert.match(css, /\.loading-shoe\s*\{[^}]*animation:\s*shoe-stride 0\.9s ease-in-out infinite;/s);
+  assert.match(css, /@keyframes shoe-stride/);
   assert.match(css, /\.snack-status\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
   assert.match(css, /\.calendar-date-tile/);
   assert.match(css, /\.upcoming-run-metrics/);

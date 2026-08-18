@@ -1819,10 +1819,7 @@ export default function Home() {
 
       <section className="workspace">
         {section === "checkin" && isAppLoading && (
-          <RecordsLoadingState
-            title="Loading check-in..."
-            detail="Getting the complete runner list and attendance records from Supabase."
-          />
+          <RecordsLoadingState />
         )}
         {section === "checkin" && !isAppLoading && (
           <div className={checkinProfileRunner ? "checkin-layout profile-open" : "checkin-layout"}>
@@ -1943,10 +1940,7 @@ export default function Home() {
         )}
 
         {section === "people" && isAppLoading && (
-          <RecordsLoadingState
-            title="Loading people..."
-            detail="Getting all profiles before showing the directory."
-          />
+          <RecordsLoadingState />
         )}
         {section === "people" && !isAppLoading && (
           <PeopleSection
@@ -1966,10 +1960,7 @@ export default function Home() {
           />
         )}
         {section === "celebration" && isAppLoading && (
-          <RecordsLoadingState
-            title="Loading celebration..."
-            detail="Getting streaks, milestones, and comeback records."
-          />
+          <RecordsLoadingState />
         )}
         {section === "celebration" && !isAppLoading && (
           <RunDayCelebrationSection
@@ -1981,10 +1972,7 @@ export default function Home() {
           />
         )}
         {section === "runs" && isAppLoading && (
-          <RecordsLoadingState
-            title="Loading trends..."
-            detail="Getting the full attendance history before drawing charts."
-          />
+          <RecordsLoadingState />
         )}
         {section === "runs" && !isAppLoading && (
           <RunsSection
@@ -1998,10 +1986,7 @@ export default function Home() {
           />
         )}
         {section === "upcoming" && isAppLoading && (
-          <RecordsLoadingState
-            title="Loading upcoming runs..."
-            detail="Getting the latest schedule and volunteer RSVPs."
-          />
+          <RecordsLoadingState />
         )}
         {section === "upcoming" && !isAppLoading && (
           <UpcomingRunsSection
@@ -2100,13 +2085,12 @@ function profileCardKey(runner?: Runner, isMobileOpen = false) {
   ].join("|");
 }
 
-function RecordsLoadingState({ title, detail }: { title: string; detail: string }) {
+function RecordsLoadingState() {
   return (
     <section className="content-section">
       <div className="records-loading-state" role="status" aria-live="polite">
-        <span className="loading-spinner" aria-hidden="true" />
-        <strong>{title}</strong>
-        <p>{detail}</p>
+        <span className="loading-shoe" aria-hidden="true">👟</span>
+        <strong>Loading</strong>
       </div>
     </section>
   );
@@ -3595,8 +3579,8 @@ function UpcomingRunsSection({
       <div className="upcoming-run-list">
         {isLoading && !upcomingRuns.length ? (
           <div className="empty-state loading-state" role="status" aria-live="polite">
-            <strong>Loading upcoming runs...</strong>
-            <p>Getting the latest schedule from Supabase and Google Calendar.</p>
+            <span className="loading-shoe" aria-hidden="true">👟</span>
+            <strong>Loading</strong>
           </div>
         ) : upcomingRuns.length ? (
           upcomingRunGroups.map((group) => (
