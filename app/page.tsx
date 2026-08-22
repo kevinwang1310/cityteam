@@ -506,6 +506,21 @@ function newRunnerId() {
   return `runner-${Date.now()}`;
 }
 
+function slugForId(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 36);
+}
+
+function newUpcomingRunId(date: string, title: string) {
+  const slug = slugForId(title) || "event";
+  const uniquePart = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `upcoming-${date}-${slug}-${uniquePart}`;
+}
+
 function initials(runner: Runner) {
   return `${runner.firstName[0] ?? ""}${runner.lastName[0] ?? ""}`.toUpperCase();
 }
@@ -1322,11 +1337,12 @@ export default function Home() {
 
   async function createUpcomingRun(runInput: Omit<UpcomingRun, "id">) {
     const date = runInput.date;
-    if (!date) return;
+    if (!date) return undefined;
+    const title = runInput.title?.trim() || `${formatShortDate(date)} Run`;
     const run: UpcomingRun = {
-      id: `upcoming-${date}`,
+      id: newUpcomingRunId(date, title),
       date,
-      title: runInput.title?.trim() || `${formatShortDate(date)} Run`,
+      title,
       startTime: runInput.startTime,
       endTime: runInput.endTime,
       location: runInput.location?.trim() || undefined,
@@ -1346,7 +1362,7 @@ export default function Home() {
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Upcoming run saved locally, but Supabase did not update.");
-        return;
+        return run;
       }
     }
 
@@ -1358,6 +1374,7 @@ export default function Home() {
       setConnectionState("error");
       setMessage(error instanceof Error ? error.message : "Upcoming run saved, but Google Calendar did not update.");
     }
+    return run;
   }
 
   async function updateUpcomingRunDetails(upcomingRunId: string, updates: Omit<UpcomingRun, "id">) {
@@ -3524,7 +3541,7 @@ function UpcomingRunsSection({
   isLoading,
 }: {
   state: AppState;
-  onCreateRun: (run: Omit<UpcomingRun, "id">) => Promise<void>;
+  onCreateRun: (run: Omit<UpcomingRun, "id">) => Promise<UpcomingRun | undefined>;
   onUpdateRunDetails: (upcomingRunId: string, updates: Omit<UpcomingRun, "id">) => Promise<void>;
   onToggleVolunteer: (upcomingRunId: string, runnerId: string, attending: boolean, note?: string) => Promise<void>;
   onSetSnackVolunteer: (upcomingRunId: string, runnerId: string) => Promise<void>;
@@ -3923,14 +3940,16 @@ function UpcomingRunsSection({
           onClick={async () => {
             setSavingDate(true);
             try {
-              await onCreateRun({
+              const createdRun = await onCreateRun({
                 date: runDate,
                 title: runTitle,
                 startTime: runStartTime,
                 endTime: runEndTime,
                 location: runLocation,
               });
-              setExpandedRunId(`upcoming-${runDate}`);
+              if (createdRun) {
+                setExpandedRunId(createdRun.id);
+              }
               setRunDate(nextSaturdayDate(new Date(`${runDate}T12:00:00`)));
               setRunTitle("");
               setRunLocation("");

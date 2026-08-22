@@ -175,6 +175,8 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.match(page, /startTime/);
   assert.match(page, /endTime/);
   assert.match(page, /location/);
+  assert.match(page, /newUpcomingRunId/);
+  assert.doesNotMatch(page, /id:\s*`upcoming-\$\{date\}`/);
   assert.match(page, /Start time/);
   assert.match(page, /End time/);
   assert.match(page, /Location/);
