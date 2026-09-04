@@ -56,13 +56,14 @@ test("server-renders the CityTeam Run Club app", async () => {
 });
 
 test("keeps production app files free of starter preview wiring", async () => {
-  const [page, css, layout, packageJson, manifest, calendarRoute] = await Promise.all([
+  const [page, css, layout, packageJson, manifest, calendarRoute, raceResultsRoute] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/api/google-calendar/upcoming-run/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/race-results/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /CityTeam/);
@@ -172,6 +173,31 @@ test("keeps production app files free of starter preview wiring", async () => {
   assert.doesNotMatch(page, /Loading upcoming runs/);
   assert.match(page, /Refreshing calendar/);
   assert.doesNotMatch(page, /Sync Calendar/);
+  assert.match(page, /Race Timer/);
+  assert.match(page, /raceResults/);
+  assert.match(page, /race_results/);
+  assert.match(page, /Finish Time Trends/);
+  assert.match(page, /5K Times/);
+  assert.match(page, /Use MM:SS/);
+  assert.match(page, /onSaveFinishTime/);
+  assert.match(page, /No checked-in CityTeam runners yet/);
+  assert.match(page, /Check in race attendees first/);
+  assert.match(page, /Start Race/);
+  assert.match(page, /Update Finish/);
+  assert.match(page, /formatRaceTime/);
+  assert.match(page, /parseRaceTime/);
+  assert.match(page, /runnerRaceResults/);
+  assert.match(css, /\.race-section/);
+  assert.match(css, /\.race-clock/);
+  assert.match(css, /\.finish-button/);
+  assert.match(raceResultsRoute, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(raceResultsRoute, /export async function GET/);
+  assert.match(raceResultsRoute, /export async function POST/);
+  assert.match(raceResultsRoute, /race_results\?on_conflict=runner_id,run_id/);
+  assert.match(
+    await readFile(new URL("../supabase/migrations/20260904110000_create_race_results.sql", import.meta.url), "utf8"),
+    /alter table public\.race_results enable row level security;/,
+  );
   assert.match(page, /startTime/);
   assert.match(page, /endTime/);
   assert.match(page, /location/);

@@ -7,7 +7,7 @@ type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
-type Section = "checkin" | "people" | "celebration" | "runs" | "upcoming" | "settings";
+type Section = "checkin" | "race" | "people" | "celebration" | "runs" | "upcoming" | "settings";
 type ChartRange = 8 | 16 | "all";
 type PeopleStatusFilter = "active" | "inactive" | "all";
 
@@ -47,6 +47,14 @@ type Attendance = {
   checkedInBy?: string;
 };
 
+type RaceResult = {
+  id: string;
+  runnerId: string;
+  runId: string;
+  finishSeconds: number;
+  recordedBy?: string;
+};
+
 type UpcomingRun = {
   id: string;
   date: string;
@@ -74,6 +82,7 @@ type AppState = {
   runners: Runner[];
   runs: Run[];
   attendance: Attendance[];
+  raceResults: RaceResult[];
   upcomingRuns: UpcomingRun[];
   upcomingRunVolunteers: UpcomingRunVolunteer[];
   admins: string[];
@@ -349,6 +358,11 @@ const demoState: AppState = {
     attended: true,
     wasVolunteer: index % 11 === 0,
   })),
+  raceResults: [
+    { id: "race-miguel-flores-run-2026-08-08", runnerId: "miguel-flores", runId: "run-2026-08-08", finishSeconds: 1675, recordedBy: "Kevin" },
+    { id: "race-hayden-h-run-2026-08-08", runnerId: "hayden-h", runId: "run-2026-08-08", finishSeconds: 1552, recordedBy: "Kevin" },
+    { id: "race-bryan-run-2026-08-08", runnerId: "bryan", runId: "run-2026-08-08", finishSeconds: 1810, recordedBy: "Kevin" },
+  ],
   upcomingRuns: [
     {
       id: "upcoming-2026-08-15",
@@ -377,6 +391,7 @@ const emptyState: AppState = {
   runners: [],
   runs: [],
   attendance: [],
+  raceResults: [],
   upcomingRuns: [],
   upcomingRunVolunteers: [],
   admins: configuredAdmins,
@@ -384,6 +399,7 @@ const emptyState: AppState = {
 
 const sections: { id: Section; label: string }[] = [
   { id: "checkin", label: "Check In" },
+  { id: "race", label: "Race Timer" },
   { id: "people", label: "People" },
   { id: "celebration", label: "Celebration" },
   { id: "runs", label: "Trends" },
@@ -550,6 +566,35 @@ function attendanceRoleCounts(records: Attendance[], runnerById: Map<string, Run
     volunteers,
     total: clients + volunteers,
   };
+}
+
+function formatRaceTime(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function parseRaceTime(value: string) {
+  const clean = value.trim();
+  const match = clean.match(/^(\d{1,3}):([0-5]\d)$/);
+  if (!match) return undefined;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function raceResultId(runnerId: string, runId: string) {
+  return `race-${runnerId}-${runId}`;
+}
+
+function runnerRaceResults(state: AppState, runnerId: string) {
+  return state.raceResults
+    .filter((result) => result.runnerId === runnerId)
+    .map((result) => ({
+      result,
+      run: state.runs.find((run) => run.id === result.runId),
+    }))
+    .filter((entry): entry is { result: RaceResult; run: Run } => Boolean(entry.run))
+    .sort((a, b) => b.run.date.localeCompare(a.run.date));
 }
 
 function chartLabelY(valueY: number, peerY: number, chartBottomY: number, tieSide: "above" | "below" = "above") {
@@ -798,11 +843,21 @@ function toUpcomingRunVolunteerRow(volunteer: UpcomingRunVolunteer): SupabaseUpc
   };
 }
 
+async function loadRaceResults(): Promise<RaceResult[]> {
+  const response = await fetch("/api/race-results");
+  const payload = (await response.json()) as { ok?: boolean; results?: RaceResult[]; error?: string };
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error ?? "Could not load race results.");
+  }
+  return payload.results ?? [];
+}
+
 async function loadSupabaseState(): Promise<AppState> {
-  const [runners, runs, attendance, upcomingRuns, upcomingRunVolunteers, admins] = await Promise.all([
+  const [runners, runs, attendance, raceResults, upcomingRuns, upcomingRunVolunteers, admins] = await Promise.all([
     supabaseRequest<SupabaseRunnerRow[]>("runners?select=*&order=status.asc,first_name.asc,last_name.asc"),
     supabaseRequest<SupabaseRunRow[]>("runs?select=*&order=run_date.asc"),
     supabaseRequest<SupabaseAttendanceRow[]>("attendance?select=*&order=created_at.asc"),
+    loadRaceResults().catch(() => []),
     supabaseRequest<SupabaseUpcomingRunRow[]>("upcoming_runs?select=*&order=run_date.asc")
       .catch(() => []),
     supabaseRequest<SupabaseUpcomingRunVolunteerRow[]>("upcoming_run_volunteers?select=*&order=created_at.asc")
@@ -815,6 +870,7 @@ async function loadSupabaseState(): Promise<AppState> {
     runners: runners.map(fromRunnerRow),
     runs: runs.map(fromRunRow),
     attendance: attendance.map(fromAttendanceRow),
+    raceResults,
     upcomingRuns: upcomingRuns.map(fromUpcomingRunRow),
     upcomingRunVolunteers: upcomingRunVolunteers.map(fromUpcomingRunVolunteerRow),
     admins: admins.length ? admins.map((admin) => admin.display_name) : configuredAdmins,
@@ -838,7 +894,24 @@ async function upsertAttendance(attendance: Attendance) {
   });
 }
 
+async function upsertRaceResult(result: RaceResult) {
+  const response = await fetch("/api/race-results", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(result),
+  });
+  const payload = (await response.json()) as { ok?: boolean; result?: RaceResult; error?: string };
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error ?? "Could not save race result.");
+  }
+  return payload.result;
+}
+
 async function deleteRunRecords(runId: string) {
+  await supabaseRequest<void>(`race_results?run_id=eq.${encodeURIComponent(runId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  }).catch(() => undefined);
   await supabaseRequest<void>(`attendance?run_id=eq.${encodeURIComponent(runId)}`, {
     method: "DELETE",
     prefer: "return=minimal",
@@ -850,6 +923,10 @@ async function deleteRunRecords(runId: string) {
 }
 
 async function deleteRunnerRecords(runnerId: string) {
+  await supabaseRequest<void>(`race_results?runner_id=eq.${encodeURIComponent(runnerId)}`, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  }).catch(() => undefined);
   await supabaseRequest<void>(`attendance?runner_id=eq.${encodeURIComponent(runnerId)}`, {
     method: "DELETE",
     prefer: "return=minimal",
@@ -1313,6 +1390,37 @@ export default function Home() {
     }
   }
 
+  async function saveRaceFinishTime(runId: string, runnerId: string, finishSeconds: number) {
+    const result: RaceResult = {
+      id: raceResultId(runnerId, runId),
+      runnerId,
+      runId,
+      finishSeconds,
+      recordedBy: adminName,
+    };
+
+    setState((current) => {
+      const existing = current.raceResults.find((item) => item.runnerId === runnerId && item.runId === runId);
+      return {
+        ...current,
+        raceResults: existing
+          ? current.raceResults.map((item) => (item.id === existing.id ? result : item))
+          : [...current.raceResults, result],
+      };
+    });
+
+    if (hasSupabaseConfig()) {
+      try {
+        await upsertRaceResult(result);
+        setConnectionState("connected");
+        setMessage("Finish time saved to Supabase.");
+      } catch (error) {
+        setConnectionState("error");
+        setMessage(error instanceof Error ? error.message : "Finish time saved locally, but Supabase did not update.");
+      }
+    }
+  }
+
   async function deleteRun(runId: string) {
     const run = state.runs.find((candidate) => candidate.id === runId);
     if (!run) return;
@@ -1321,6 +1429,7 @@ export default function Home() {
       ...current,
       runs: current.runs.filter((candidate) => candidate.id !== runId),
       attendance: current.attendance.filter((item) => item.runId !== runId),
+      raceResults: current.raceResults.filter((item) => item.runId !== runId),
     }));
 
     if (hasSupabaseConfig()) {
@@ -1592,6 +1701,7 @@ export default function Home() {
       ...current,
       runners: current.runners.filter((candidate) => candidate.id !== runnerId),
       attendance: current.attendance.filter((item) => item.runnerId !== runnerId),
+      raceResults: current.raceResults.filter((item) => item.runnerId !== runnerId),
       upcomingRuns: current.upcomingRuns.map((run) =>
         run.snackRunnerId === runnerId ? { ...run, snackRunnerId: undefined } : run,
       ),
@@ -1976,6 +2086,20 @@ export default function Home() {
             }}
           />
         )}
+        {section === "race" && isAppLoading && (
+          <RecordsLoadingState />
+        )}
+        {section === "race" && !isAppLoading && (
+          <RaceTimerSection
+            state={state}
+            todayRunId={todayRunId}
+            onSaveFinishTime={saveRaceFinishTime}
+            onOpenProfile={(runnerId) => {
+              openRunnerProfile(runnerId);
+              setSection("checkin");
+            }}
+          />
+        )}
         {section === "celebration" && isAppLoading && (
           <RecordsLoadingState />
         )}
@@ -2162,6 +2286,8 @@ function ProfileCard({
   const totalRunsAttended = countAttendance(state, runner.id);
   const automaticFirstJoinedDate = firstJoinedDate(state, runner.id) ?? runner.dateFirstJoined;
   const canEarnNewShoes = (isEditingProfile ? profileDraft.personType : runner.personType) === "cityteam_client";
+  const profileRaceResults = runnerRaceResults(state, runner.id);
+  const bestRaceResult = profileRaceResults.slice().sort((a, b) => a.result.finishSeconds - b.result.finishSeconds)[0];
 
   return (
     <aside className={isMobileOpen ? "profile-panel mobile-profile-open" : "profile-panel"} ref={panelRef}>
@@ -2436,6 +2562,34 @@ function ProfileCard({
         </div>
       </section>
 
+      <section>
+        <div className="profile-editor-section profile-section-heading">
+          <span className="profile-section-label race-results">5K Times</span>
+        </div>
+        {profileRaceResults.length ? (
+          <>
+            <div className="profile-stats race-stats">
+              <span><strong>{formatRaceTime(bestRaceResult.result.finishSeconds)}</strong> Best</span>
+              <span><strong>{profileRaceResults.length}</strong> Timed races</span>
+              <span><strong>{formatRaceTime(profileRaceResults[0].result.finishSeconds)}</strong> Latest</span>
+            </div>
+            <div className="race-result-list">
+              {profileRaceResults.slice(0, 6).map(({ result, run }) => (
+                <div key={result.id} className="race-result-row">
+                  <span>
+                    <strong>{run.title}</strong>
+                    <small>{formatShortDate(run.date)}</small>
+                  </span>
+                  <em>{formatRaceTime(result.finishSeconds)}</em>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="profile-empty-note">No 5K finish times yet.</div>
+        )}
+      </section>
+
       <section className="danger-zone">
         {isConfirmingDelete ? (
           <>
@@ -2644,6 +2798,215 @@ function PhotoCropper({
         </div>
       </section>
     </div>
+  );
+}
+
+function RaceTimerSection({
+  state,
+  todayRunId,
+  onSaveFinishTime,
+  onOpenProfile,
+}: {
+  state: AppState;
+  todayRunId: string;
+  onSaveFinishTime: (runId: string, runnerId: string, finishSeconds: number) => Promise<void>;
+  onOpenProfile: (runnerId: string) => void;
+}) {
+  const sortedRuns = state.runs.slice().sort((a, b) => b.date.localeCompare(a.date));
+  const defaultRunId = sortedRuns.some((run) => run.id === todayRunId) ? todayRunId : sortedRuns[0]?.id ?? "";
+  const [selectedRunId, setSelectedRunId] = useState(defaultRunId);
+  const [raceStartedAt, setRaceStartedAt] = useState<number | null>(null);
+  const [baseElapsedSeconds, setBaseElapsedSeconds] = useState(0);
+  const [liveElapsedSeconds, setLiveElapsedSeconds] = useState(0);
+  const [draftTimes, setDraftTimes] = useState<Record<string, string>>({});
+  const [timeErrors, setTimeErrors] = useState<Record<string, string>>({});
+  const selectedRun = sortedRuns.find((run) => run.id === selectedRunId);
+  const isRunning = raceStartedAt !== null;
+  const elapsedSeconds = isRunning ? liveElapsedSeconds : baseElapsedSeconds;
+  const resultByRunnerId = new Map(
+    state.raceResults
+      .filter((result) => result.runId === selectedRunId)
+      .map((result) => [result.runnerId, result]),
+  );
+  const checkedInRunnerIds = new Set(
+    state.attendance
+      .filter((item) => item.runId === selectedRunId && item.attended)
+      .map((item) => item.runnerId),
+  );
+  const checkedInClients = state.runners
+    .filter((runner) => runner.personType === "cityteam_client" && checkedInRunnerIds.has(runner.id))
+    .sort((a, b) => {
+      const aResult = resultByRunnerId.get(a.id);
+      const bResult = resultByRunnerId.get(b.id);
+      if (aResult && bResult) return aResult.finishSeconds - bResult.finishSeconds;
+      if (aResult) return 1;
+      if (bResult) return -1;
+      return runnerName(a).localeCompare(runnerName(b));
+    });
+  const finishedCount = checkedInClients.filter((runner) => resultByRunnerId.has(runner.id)).length;
+  const fastestResult = state.raceResults
+    .filter((result) => result.runId === selectedRunId)
+    .sort((a, b) => a.finishSeconds - b.finishSeconds)[0];
+  const fastestRunner = fastestResult ? state.runners.find((runner) => runner.id === fastestResult.runnerId) : undefined;
+
+  useEffect(() => {
+    if (!selectedRunId && defaultRunId) {
+      setSelectedRunId(defaultRunId);
+    }
+  }, [defaultRunId, selectedRunId]);
+
+  useEffect(() => {
+    const startedAt = raceStartedAt;
+    if (startedAt === null) return;
+    const intervalId = window.setInterval(() => {
+      setLiveElapsedSeconds(baseElapsedSeconds + Math.floor((Date.now() - startedAt) / 1000));
+    }, 250);
+    return () => window.clearInterval(intervalId);
+  }, [baseElapsedSeconds, raceStartedAt]);
+
+  useEffect(() => {
+    setDraftTimes({});
+    setTimeErrors({});
+  }, [selectedRunId]);
+
+  function startRace() {
+    setRaceStartedAt(Date.now());
+    setLiveElapsedSeconds(baseElapsedSeconds);
+  }
+
+  function pauseRace() {
+    setBaseElapsedSeconds(elapsedSeconds);
+    setRaceStartedAt(null);
+  }
+
+  function resetRaceClock() {
+    setRaceStartedAt(null);
+    setBaseElapsedSeconds(0);
+    setLiveElapsedSeconds(0);
+  }
+
+  async function saveManualTime(runnerId: string, value: string) {
+    const seconds = parseRaceTime(value);
+    if (seconds === undefined) {
+      setTimeErrors((current) => ({ ...current, [runnerId]: "Use MM:SS" }));
+      return;
+    }
+    setTimeErrors((current) => ({ ...current, [runnerId]: "" }));
+    setDraftTimes((current) => ({ ...current, [runnerId]: formatRaceTime(seconds) }));
+    await onSaveFinishTime(selectedRunId, runnerId, seconds);
+  }
+
+  return (
+    <section className="content-section race-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">5K race day</p>
+          <h3>Race Timer</h3>
+        </div>
+        <div className="race-run-picker">
+          <label>
+            <span>Race</span>
+            <select
+              value={selectedRunId}
+              onChange={(event) => {
+                setSelectedRunId(event.target.value);
+                resetRaceClock();
+              }}
+            >
+              {sortedRuns.map((run) => (
+                <option key={run.id} value={run.id}>
+                  {formatShortDate(run.date)} - {run.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {selectedRun ? (
+        <>
+          <div className="race-hero-panel">
+            <div>
+              <p className="eyebrow">{formatShortDate(selectedRun.date)}</p>
+              <h4>{selectedRun.title}</h4>
+              <span>{finishedCount} of {checkedInClients.length} finished</span>
+            </div>
+            <div className="race-clock" aria-live="polite">
+              {formatRaceTime(elapsedSeconds)}
+            </div>
+            <div className="race-controls">
+              {isRunning ? (
+                <button className="secondary-action" onClick={pauseRace}>Pause</button>
+              ) : (
+                <button className="primary-action" onClick={startRace}>Start Race</button>
+              )}
+              <button className="secondary-action" onClick={resetRaceClock}>Reset Clock</button>
+            </div>
+          </div>
+
+          {fastestRunner && fastestResult && (
+            <div className="race-best-strip">
+              <span>Fastest today</span>
+              <strong>{runnerName(fastestRunner)}</strong>
+              <em>{formatRaceTime(fastestResult.finishSeconds)}</em>
+            </div>
+          )}
+
+          {checkedInClients.length ? (
+            <div className="race-runner-grid">
+              {checkedInClients.map((runner) => {
+                const result = resultByRunnerId.get(runner.id);
+                const draftValue = draftTimes[runner.id] ?? (result ? formatRaceTime(result.finishSeconds) : "");
+                return (
+                  <article key={runner.id} className={result ? "race-runner-card finished" : "race-runner-card"}>
+                    <button className="race-runner-main" onClick={() => onOpenProfile(runner.id)}>
+                      <Avatar runner={runner} />
+                      <span>
+                        <strong>{runnerName(runner)}</strong>
+                        <small>{result ? `Finished ${formatRaceTime(result.finishSeconds)}` : "Waiting for finish"}</small>
+                      </span>
+                    </button>
+                    <button
+                      className={result ? "finish-button saved" : "finish-button"}
+                      disabled={!elapsedSeconds}
+                      onClick={() => onSaveFinishTime(selectedRunId, runner.id, elapsedSeconds)}
+                    >
+                      {result ? "Update Finish" : "Finish"}
+                    </button>
+                    <div className="manual-time-entry">
+                      <input
+                        value={draftValue}
+                        onChange={(event) => {
+                          setDraftTimes((current) => ({ ...current, [runner.id]: event.target.value }));
+                          setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
+                        }}
+                        placeholder="MM:SS"
+                        inputMode="numeric"
+                        aria-label={`Manual finish time for ${runnerName(runner)}`}
+                      />
+                      <button className="secondary-action" onClick={() => saveManualTime(runner.id, draftValue)}>
+                        Save
+                      </button>
+                      {timeErrors[runner.id] && <small className="time-error">{timeErrors[runner.id]}</small>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <strong>No checked-in CityTeam runners yet</strong>
+              <span>Check in race attendees first, then return here to record finish times.</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="empty-state">
+          <strong>No saved race yet</strong>
+          <span>Create or check in a run first, then use Race Timer for finish times.</span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -3247,6 +3610,115 @@ function ClientRetentionTrendChart({ state }: { state: AppState }) {
   );
 }
 
+function RaceResultsTrendChart({ state }: { state: AppState }) {
+  const runnersWithResults = state.runners
+    .filter((runner) => runner.personType === "cityteam_client")
+    .filter((runner) => runnerRaceResults(state, runner.id).length > 0)
+    .sort((a, b) => runnerName(a).localeCompare(runnerName(b)));
+  const [selectedRunnerId, setSelectedRunnerId] = useState(runnersWithResults[0]?.id ?? "");
+  const selectedRunner = runnersWithResults.find((runner) => runner.id === selectedRunnerId) ?? runnersWithResults[0];
+  const results = selectedRunner
+    ? runnerRaceResults(state, selectedRunner.id).slice().sort((a, b) => a.run.date.localeCompare(b.run.date))
+    : [];
+  const width = 920;
+  const height = 320;
+  const chart = { left: 74, right: 34, top: 32, bottom: 70 };
+  const innerWidth = width - chart.left - chart.right;
+  const innerHeight = height - chart.top - chart.bottom;
+  const finishTimes = results.map((entry) => entry.result.finishSeconds);
+  const fastest = Math.min(...finishTimes);
+  const slowest = Math.max(...finishTimes);
+  const paddedFastest = Math.max(0, fastest - 30);
+  const paddedSlowest = slowest + 30;
+  const xFor = (index: number) =>
+    chart.left + (results.length <= 1 ? innerWidth / 2 : (index / (results.length - 1)) * innerWidth);
+  const yFor = (seconds: number) => {
+    if (paddedSlowest === paddedFastest) return chart.top + innerHeight / 2;
+    return chart.top + ((seconds - paddedFastest) / (paddedSlowest - paddedFastest)) * innerHeight;
+  };
+  const path = results
+    .map((entry, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(entry.result.finishSeconds)}`)
+    .join(" ");
+
+  useEffect(() => {
+    if (!runnersWithResults.length) {
+      setSelectedRunnerId("");
+      return;
+    }
+    if (!runnersWithResults.some((runner) => runner.id === selectedRunnerId)) {
+      setSelectedRunnerId(runnersWithResults[0].id);
+    }
+  }, [runnersWithResults, selectedRunnerId]);
+
+  if (!runnersWithResults.length || !selectedRunner) {
+    return (
+      <div className="trend-chart-card race-chart-card empty">
+        <p>No 5K finish times yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="trend-chart-card race-chart-card">
+      <div className="trend-chart-head">
+        <div>
+          <p className="eyebrow">5K progress</p>
+          <h4>Finish Time Trends</h4>
+          <small>{results.length} timed {results.length === 1 ? "race" : "races"}</small>
+        </div>
+        <div className="race-chart-picker">
+          <label>
+            <span>Runner</span>
+            <select value={selectedRunner.id} onChange={(event) => setSelectedRunnerId(event.target.value)}>
+              {runnersWithResults.map((runner) => (
+                <option key={runner.id} value={runner.id}>{runnerName(runner)}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="race-progress-summary">
+        <span><strong>{formatRaceTime(Math.min(...finishTimes))}</strong> Best</span>
+        <span><strong>{formatRaceTime(results[results.length - 1].result.finishSeconds)}</strong> Latest</span>
+        <span><strong>{runnerName(selectedRunner)}</strong> Runner</span>
+      </div>
+
+      <div className="line-chart-shell" role="img" aria-label={`5K finish time trend for ${runnerName(selectedRunner)}`}>
+        <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+          <rect x="0" y="0" width={width} height={height} rx="8" className="chart-bg" />
+          {[paddedFastest, (paddedFastest + paddedSlowest) / 2, paddedSlowest].map((tick) => (
+            <g key={tick}>
+              <line x1={chart.left} x2={width - chart.right} y1={yFor(tick)} y2={yFor(tick)} className="chart-grid" />
+              <text x={chart.left - 14} y={yFor(tick) + 4} className="chart-axis-label" textAnchor="end">
+                {formatRaceTime(tick)}
+              </text>
+            </g>
+          ))}
+
+          <path d={path} className="chart-line race-time" />
+          {results.map((entry, index) => {
+            const x = xFor(index);
+            const y = yFor(entry.result.finishSeconds);
+            return (
+              <g key={entry.result.id}>
+                <line x1={x} x2={x} y1={chart.top} y2={height - chart.bottom} className="chart-date-guide" />
+                <circle cx={x} cy={y} r="7" className="chart-dot race-time" />
+                <text x={x} y={Math.max(18, y - 16)} className="chart-value-label race-time" textAnchor="middle">
+                  {formatRaceTime(entry.result.finishSeconds)}
+                </text>
+                <text x={x} y={height - 32} className="chart-date-label" textAnchor="middle">
+                  {formatShortDate(entry.run.date)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function AttendanceLeaderboard({
   state,
   onOpenProfile,
@@ -3414,6 +3886,7 @@ function RunsSection({
       </div>
       <AttendanceTrendChart state={state} />
       <ClientRetentionTrendChart state={state} />
+      <RaceResultsTrendChart state={state} />
       <AttendanceLeaderboard state={state} onOpenProfile={onOpenProfile} />
       <div className="collapsible-section-head">
         <div>
@@ -3997,6 +4470,10 @@ function SettingsSection() {
         <p>
           Profile shoe and join dates need the columns in{" "}
           <code>supabase-profile-fields.sql</code>.
+        </p>
+        <p>
+          Race Timer finish times use the <code>race_results</code> table and the server-only{" "}
+          <code>SUPABASE_SERVICE_ROLE_KEY</code> so race results are not written directly from the browser.
         </p>
         <p>
           Google Calendar sync uses <code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code>,{" "}
