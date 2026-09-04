@@ -86,6 +86,25 @@ export async function GET() {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    if (typeof body.id !== "string" || !body.id.trim()) {
+      return NextResponse.json({ ok: false, error: "Missing race result ID." }, { status: 400 });
+    }
+    await supabaseServerRequest(`race_results?id=eq.${encodeURIComponent(body.id)}`, {
+      method: "DELETE",
+      prefer: "return=minimal",
+    });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : "Could not delete race result." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   if (!hasServerSupabaseConfig()) {
     return NextResponse.json(

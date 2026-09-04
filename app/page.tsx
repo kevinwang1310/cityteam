@@ -1399,16 +1399,6 @@ export default function Home() {
       recordedBy: adminName,
     };
 
-    setState((current) => {
-      const existing = current.raceResults.find((item) => item.runnerId === runnerId && item.runId === runId);
-      return {
-        ...current,
-        raceResults: existing
-          ? current.raceResults.map((item) => (item.id === existing.id ? result : item))
-          : [...current.raceResults, result],
-      };
-    });
-
     if (hasSupabaseConfig()) {
       try {
         await upsertRaceResult(result);
@@ -1416,9 +1406,27 @@ export default function Home() {
         setMessage("Finish time saved to Supabase.");
       } catch (error) {
         setConnectionState("error");
-        setMessage(error instanceof Error ? error.message : "Finish time saved locally, but Supabase did not update.");
+        setMessage(error instanceof Error ? error.message : "Could not save finish time.");
+        throw error;
       }
     }
+    setState((current) => ({
+      ...current,
+      raceResults: [...current.raceResults.filter((item) => item.runnerId !== runnerId || item.runId !== runId), result],
+    }));
+  }
+
+  async function deleteRaceFinishTime(resultId: string) {
+    if (hasSupabaseConfig()) {
+      const response = await fetch("/api/race-results", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: resultId }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Could not delete finish time.");
+    }
+    setState((current) => ({ ...current, raceResults: current.raceResults.filter((item) => item.id !== resultId) }));
   }
 
   async function deleteRun(runId: string) {
@@ -2094,6 +2102,7 @@ export default function Home() {
             state={state}
             todayRunId={todayRunId}
             onSaveFinishTime={saveRaceFinishTime}
+            onDeleteFinishTime={deleteRaceFinishTime}
             onOpenProfile={(runnerId) => {
               openRunnerProfile(runnerId);
               setSection("checkin");
@@ -2805,11 +2814,13 @@ function RaceTimerSection({
   state,
   todayRunId,
   onSaveFinishTime,
+  onDeleteFinishTime,
   onOpenProfile,
 }: {
   state: AppState;
   todayRunId: string;
   onSaveFinishTime: (runId: string, runnerId: string, finishSeconds: number) => Promise<void>;
+  onDeleteFinishTime: (resultId: string) => Promise<void>;
   onOpenProfile: (runnerId: string) => void;
 }) {
   const sortedRuns = state.runs.slice().sort((a, b) => b.date.localeCompare(a.date));
@@ -2820,6 +2831,7 @@ function RaceTimerSection({
   const [liveElapsedSeconds, setLiveElapsedSeconds] = useState(0);
   const [draftTimes, setDraftTimes] = useState<Record<string, string>>({});
   const [timeErrors, setTimeErrors] = useState<Record<string, string>>({});
+  const [pendingTimes, setPendingTimes] = useState<Record<string, boolean>>({});
   const selectedRun = sortedRuns.find((run) => run.id === selectedRunId);
   const isRunning = raceStartedAt !== null;
   const elapsedSeconds = isRunning ? liveElapsedSeconds : baseElapsedSeconds;
@@ -2892,8 +2904,29 @@ function RaceTimerSection({
       return;
     }
     setTimeErrors((current) => ({ ...current, [runnerId]: "" }));
-    setDraftTimes((current) => ({ ...current, [runnerId]: formatRaceTime(seconds) }));
-    await onSaveFinishTime(selectedRunId, runnerId, seconds);
+    setPendingTimes((current) => ({ ...current, [runnerId]: true }));
+    try {
+      await onSaveFinishTime(selectedRunId, runnerId, seconds);
+      setDraftTimes((current) => ({ ...current, [runnerId]: formatRaceTime(seconds) }));
+    } catch (error) {
+      setTimeErrors((current) => ({ ...current, [runnerId]: error instanceof Error ? error.message : "Could not save. Try again." }));
+    } finally {
+      setPendingTimes((current) => ({ ...current, [runnerId]: false }));
+    }
+  }
+
+  async function deleteTime(result: RaceResult, name: string) {
+    if (!window.confirm(`Delete ${name}'s finish time? This removes it from their profile and trends.`)) return;
+    setPendingTimes((current) => ({ ...current, [result.runnerId]: true }));
+    try {
+      await onDeleteFinishTime(result.id);
+      setDraftTimes((current) => ({ ...current, [result.runnerId]: "" }));
+      setTimeErrors((current) => ({ ...current, [result.runnerId]: "" }));
+    } catch (error) {
+      setTimeErrors((current) => ({ ...current, [result.runnerId]: error instanceof Error ? error.message : "Could not delete. Try again." }));
+    } finally {
+      setPendingTimes((current) => ({ ...current, [result.runnerId]: false }));
+    }
   }
 
   return (
@@ -2908,6 +2941,7 @@ function RaceTimerSection({
             <span>Race</span>
             <select
               value={selectedRunId}
+              disabled={Object.values(pendingTimes).some(Boolean)}
               onChange={(event) => {
                 setSelectedRunId(event.target.value);
                 resetRaceClock();
@@ -2968,14 +3002,15 @@ function RaceTimerSection({
                     </button>
                     <button
                       className={result ? "finish-button saved" : "finish-button"}
-                      disabled={!elapsedSeconds}
-                      onClick={() => onSaveFinishTime(selectedRunId, runner.id, elapsedSeconds)}
+                      disabled={!elapsedSeconds || pendingTimes[runner.id]}
+                      onClick={() => saveManualTime(runner.id, formatRaceTime(elapsedSeconds))}
                     >
                       {result ? "Update Finish" : "Finish"}
                     </button>
                     <div className="manual-time-entry">
                       <input
                         value={draftValue}
+                        disabled={pendingTimes[runner.id]}
                         onChange={(event) => {
                           setDraftTimes((current) => ({ ...current, [runner.id]: event.target.value }));
                           setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
@@ -2984,11 +3019,12 @@ function RaceTimerSection({
                         inputMode="numeric"
                         aria-label={`Manual finish time for ${runnerName(runner)}`}
                       />
-                      <button className="secondary-action" onClick={() => saveManualTime(runner.id, draftValue)}>
-                        Save
+                      <button className="secondary-action" disabled={pendingTimes[runner.id] || (!!result && parseRaceTime(draftValue) === result.finishSeconds && !timeErrors[runner.id])} onClick={() => saveManualTime(runner.id, draftValue)}>
+                        {pendingTimes[runner.id] ? "Saving..." : result && parseRaceTime(draftValue) === result.finishSeconds && !timeErrors[runner.id] ? "Saved" : "Save"}
                       </button>
                       {timeErrors[runner.id] && <small className="time-error">{timeErrors[runner.id]}</small>}
                     </div>
+                    {result && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={() => deleteTime(result, runnerName(runner))}>Delete time</button>}
                   </article>
                 );
               })}
