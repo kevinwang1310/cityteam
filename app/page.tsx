@@ -1080,6 +1080,15 @@ export default function Home() {
   const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
   const [runDayDialogOpen, setRunDayDialogOpen] = useState(false);
   const [todayRunId, setTodayRunId] = useState(todayId());
+  useEffect(() => {
+    const refreshToday = () => setTodayRunId(todayId());
+    const interval = window.setInterval(refreshToday, 30000);
+    window.addEventListener("focus", refreshToday);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshToday);
+    };
+  }, []);
   const [connectionState, setConnectionState] = useState<"demo" | "loading" | "connected" | "error">(
     hasSupabaseConfig() ? "loading" : "demo",
   );
@@ -2100,7 +2109,7 @@ export default function Home() {
         {section === "race" && !isAppLoading && (
           <RaceTimerSection
             state={state}
-            todayRunId={todayRunId}
+            todayRun={todayRun}
             onSaveFinishTime={saveRaceFinishTime}
             onDeleteFinishTime={deleteRaceFinishTime}
             onOpenProfile={(runnerId) => {
@@ -2812,20 +2821,22 @@ function PhotoCropper({
 
 function RaceTimerSection({
   state,
-  todayRunId,
+  todayRun,
   onSaveFinishTime,
   onDeleteFinishTime,
   onOpenProfile,
 }: {
   state: AppState;
-  todayRunId: string;
+  todayRun: Run;
   onSaveFinishTime: (runId: string, runnerId: string, finishSeconds: number) => Promise<void>;
   onDeleteFinishTime: (resultId: string) => Promise<void>;
   onOpenProfile: (runnerId: string) => void;
 }) {
-  const sortedRuns = state.runs.slice().sort((a, b) => b.date.localeCompare(a.date));
-  const defaultRunId = sortedRuns.some((run) => run.id === todayRunId) ? todayRunId : sortedRuns[0]?.id ?? "";
-  const [selectedRunId, setSelectedRunId] = useState(defaultRunId);
+  const sortedRuns = [todayRun, ...state.runs.filter((run) => run.id !== todayRun.id)]
+    .sort((a, b) => b.date.localeCompare(a.date));
+  // Follow today's check-in run unless the user explicitly selects a past race.
+  const [chosenRunId, setChosenRunId] = useState<string | null>(null);
+  const selectedRunId = chosenRunId ?? todayRun.id;
   const [raceStartedAt, setRaceStartedAt] = useState<number | null>(null);
   const [baseElapsedSeconds, setBaseElapsedSeconds] = useState(0);
   const [liveElapsedSeconds, setLiveElapsedSeconds] = useState(0);
@@ -2860,12 +2871,6 @@ function RaceTimerSection({
     .filter((result) => result.runId === selectedRunId)
     .sort((a, b) => a.finishSeconds - b.finishSeconds)[0];
   const fastestRunner = fastestResult ? state.runners.find((runner) => runner.id === fastestResult.runnerId) : undefined;
-
-  useEffect(() => {
-    if (!selectedRunId && defaultRunId) {
-      setSelectedRunId(defaultRunId);
-    }
-  }, [defaultRunId, selectedRunId]);
 
   useEffect(() => {
     const startedAt = raceStartedAt;
@@ -2943,13 +2948,13 @@ function RaceTimerSection({
               value={selectedRunId}
               disabled={Object.values(pendingTimes).some(Boolean)}
               onChange={(event) => {
-                setSelectedRunId(event.target.value);
+                setChosenRunId(event.target.value === todayRun.id ? null : event.target.value);
                 resetRaceClock();
               }}
             >
               {sortedRuns.map((run) => (
                 <option key={run.id} value={run.id}>
-                  {formatShortDate(run.date)} - {run.title}
+                  {run.id === todayRun.id ? "Today - " : ""}{formatShortDate(run.date)} - {run.title}
                 </option>
               ))}
             </select>
