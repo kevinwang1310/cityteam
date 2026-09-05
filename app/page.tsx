@@ -575,6 +575,11 @@ function formatRaceTime(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+function formatRaceTimeInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 5);
+  return digits.length > 2 ? `${digits.slice(0, -2)}:${digits.slice(-2)}` : digits;
+}
+
 function parseRaceTime(value: string) {
   const clean = value.trim();
   const match = clean.match(/^(\d{1,3}):([0-5]\d)$/);
@@ -2841,6 +2846,7 @@ function RaceTimerSection({
   const [baseElapsedSeconds, setBaseElapsedSeconds] = useState(0);
   const [liveElapsedSeconds, setLiveElapsedSeconds] = useState(0);
   const [draftTimes, setDraftTimes] = useState<Record<string, string>>({});
+  const [editingTimes, setEditingTimes] = useState<Record<string, boolean>>({});
   const [timeErrors, setTimeErrors] = useState<Record<string, string>>({});
   const [pendingTimes, setPendingTimes] = useState<Record<string, boolean>>({});
   const selectedRun = sortedRuns.find((run) => run.id === selectedRunId);
@@ -2883,6 +2889,7 @@ function RaceTimerSection({
 
   useEffect(() => {
     setDraftTimes({});
+    setEditingTimes({});
     setTimeErrors({});
   }, [selectedRunId]);
 
@@ -2913,6 +2920,7 @@ function RaceTimerSection({
     try {
       await onSaveFinishTime(selectedRunId, runnerId, seconds);
       setDraftTimes((current) => ({ ...current, [runnerId]: formatRaceTime(seconds) }));
+      setEditingTimes((current) => ({ ...current, [runnerId]: false }));
     } catch (error) {
       setTimeErrors((current) => ({ ...current, [runnerId]: error instanceof Error ? error.message : "Could not save. Try again." }));
     } finally {
@@ -2921,11 +2929,12 @@ function RaceTimerSection({
   }
 
   async function deleteTime(result: RaceResult, name: string) {
-    if (!window.confirm(`Delete ${name}'s finish time? This removes it from their profile and trends.`)) return;
+    if (!window.confirm(`Clear ${name}'s finish time? This removes it from their profile and trends.`)) return;
     setPendingTimes((current) => ({ ...current, [result.runnerId]: true }));
     try {
       await onDeleteFinishTime(result.id);
       setDraftTimes((current) => ({ ...current, [result.runnerId]: "" }));
+      setEditingTimes((current) => ({ ...current, [result.runnerId]: false }));
       setTimeErrors((current) => ({ ...current, [result.runnerId]: "" }));
     } catch (error) {
       setTimeErrors((current) => ({ ...current, [result.runnerId]: error instanceof Error ? error.message : "Could not delete. Try again." }));
@@ -2996,6 +3005,7 @@ function RaceTimerSection({
               {checkedInClients.map((runner) => {
                 const result = resultByRunnerId.get(runner.id);
                 const draftValue = draftTimes[runner.id] ?? (result ? formatRaceTime(result.finishSeconds) : "");
+                const isSaved = Boolean(result && !editingTimes[runner.id]);
                 return (
                   <article key={runner.id} className={result ? "race-runner-card finished" : "race-runner-card"}>
                     <button className="race-runner-main" onClick={() => onOpenProfile(runner.id)}>
@@ -3016,20 +3026,42 @@ function RaceTimerSection({
                       <input
                         value={draftValue}
                         disabled={pendingTimes[runner.id]}
+                        readOnly={isSaved}
                         onChange={(event) => {
-                          setDraftTimes((current) => ({ ...current, [runner.id]: event.target.value }));
+                          setDraftTimes((current) => ({ ...current, [runner.id]: formatRaceTimeInput(event.target.value) }));
                           setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
                         }}
                         placeholder="MM:SS"
                         inputMode="numeric"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !isSaved && !pendingTimes[runner.id]) {
+                            event.preventDefault();
+                            void saveManualTime(runner.id, draftValue);
+                          }
+                        }}
                         aria-label={`Manual finish time for ${runnerName(runner)}`}
                       />
-                      <button className="secondary-action" disabled={pendingTimes[runner.id] || (!!result && parseRaceTime(draftValue) === result.finishSeconds && !timeErrors[runner.id])} onClick={() => saveManualTime(runner.id, draftValue)}>
-                        {pendingTimes[runner.id] ? "Saving..." : result && parseRaceTime(draftValue) === result.finishSeconds && !timeErrors[runner.id] ? "Saved" : "Save"}
+                      <button className="secondary-action" disabled={pendingTimes[runner.id] || isSaved || !draftValue} onClick={() => saveManualTime(runner.id, draftValue)}>
+                        {pendingTimes[runner.id] ? "Please wait..." : isSaved ? "Saved" : "Save"}
                       </button>
-                      {timeErrors[runner.id] && <small className="time-error">{timeErrors[runner.id]}</small>}
+                      {timeErrors[runner.id] && <small role="alert" className="time-error">{timeErrors[runner.id]}</small>}
                     </div>
-                    {result && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={() => deleteTime(result, runnerName(runner))}>Delete time</button>}
+                    <div className="race-time-actions">
+                      {isSaved && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={(event) => {
+                        setEditingTimes((current) => ({ ...current, [runner.id]: true }));
+                        const input = event.currentTarget.closest("article")?.querySelector("input");
+                        input?.focus();
+                        input?.select();
+                      }}>Edit</button>}
+                      {(result || draftValue) && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={() => {
+                        if (result) {
+                          void deleteTime(result, runnerName(runner));
+                        } else {
+                          setDraftTimes((current) => ({ ...current, [runner.id]: "" }));
+                          setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
+                        }
+                      }}>Clear</button>}
+                    </div>
                   </article>
                 );
               })}

@@ -1664,6 +1664,13 @@ a.nav-item {
   font-variant-numeric: tabular-nums;
 }
 
+.race-time-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
 .time-error {
   color: var(--red);
   font-size: 0.78rem;
