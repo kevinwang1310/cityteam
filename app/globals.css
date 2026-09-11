@@ -1664,6 +1664,66 @@ a.nav-item {
   font-variant-numeric: tabular-nums;
 }
 
+.quick-checkin {
+  padding: 16px 0;
+  border-block: 1px solid #cad7d0;
+  margin-bottom: 16px;
+}
+
+.quick-checkin fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.quick-checkin legend {
+  font-size: 18px;
+  font-weight: 700;
+  color: #176347;
+  margin-bottom: 12px;
+}
+
+.quick-checkin-fields {
+  display: grid;
+  grid-template-columns: 96px minmax(120px, 320px) auto auto;
+  align-items: center;
+  gap: 12px;
+  justify-content: start;
+}
+
+.quick-checkin-photo {
+  width: 96px;
+  height: 96px;
+  border: 1px dashed #548575;
+  border-radius: 8px;
+  background: #eff8f3;
+  color: #176347;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.quick-checkin-photo img { width: 100%; height: 100%; object-fit: cover; }
+.quick-checkin-photo img + span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffffeb;
+  font-size: 12px;
+  padding: 3px;
+}
+.quick-checkin-name { display: grid; gap: 6px; min-width: 0; }
+.quick-checkin-name input { width: 100%; min-width: 0; font-size: 18px; min-height: 48px; }
+.quick-checkin-notice { color: #176347; font-weight: 600; }
+.quick-checkin-fields > button { min-height: 44px; }
+@media (max-width: 760px) {
+  .quick-checkin-fields { grid-template-columns: 96px minmax(0, 1fr); justify-content: stretch; }
+  .quick-checkin-fields > .primary-action { grid-column: 1 / -1; }
+  .quick-checkin-fields > .secondary-action { grid-column: 1 / -1; }
+}
+
 .race-time-actions {
   display: flex;
   justify-content: flex-end;

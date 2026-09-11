@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules",
+    "cityteam-website",
     "build",
     "db",
     "drizzle",

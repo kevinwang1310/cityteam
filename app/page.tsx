@@ -1083,7 +1083,6 @@ export default function Home() {
   const [newProfileEditRunnerId, setNewProfileEditRunnerId] = useState<string | null>(null);
   const [checkinProfileRunnerId, setCheckinProfileRunnerId] = useState<string | null>(null);
   const [checkinCelebration, setCheckinCelebration] = useState<CheckinCelebration | null>(null);
-  const [runDayDialogOpen, setRunDayDialogOpen] = useState(false);
   const [todayRunId, setTodayRunId] = useState(todayId());
   useEffect(() => {
     const refreshToday = () => setTodayRunId(todayId());
@@ -1104,7 +1103,7 @@ export default function Home() {
   );
   const [upcomingCalendarRefreshing, setUpcomingCalendarRefreshing] = useState(false);
   const [newRunnerOpen, setNewRunnerOpen] = useState(false);
-  const [newRunner, setNewRunner] = useState({ firstName: "", lastName: "", notes: "" });
+  const [quickCheckinNotice, setQuickCheckinNotice] = useState("");
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const previousSectionRef = useRef<Section>(section);
@@ -1164,7 +1163,6 @@ export default function Home() {
       title: todayUpcomingRun?.title || `${formatShortDate(todayDateValue)} Run`,
     };
   }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
-  const isScheduledRunDay = Boolean(todayUpcomingRun);
 
   useEffect(() => {
     const previousSection = previousSectionRef.current;
@@ -1316,11 +1314,6 @@ export default function Home() {
   }
 
   async function updateAttendance(runnerId: string, updates: Partial<Attendance>) {
-    if (!isScheduledRunDay) {
-      setRunDayDialogOpen(true);
-      return;
-    }
-
     const existing = state.attendance.find((item) => item.runnerId === runnerId && item.runId === todayRunId);
     const runner = state.runners.find((candidate) => candidate.id === runnerId);
     const wasAlreadyCheckedIn = Boolean(existing?.attended);
@@ -1745,30 +1738,48 @@ export default function Home() {
     }
   }
 
-  async function createRunner() {
-    if (!newRunner.firstName.trim()) return;
+  async function createRunner(id: string, firstName: string, photoUrl: string) {
+    if (todayRun.date !== todayDate()) {
+      throw new Error("The date has changed. Refresh the page and try again.");
+    }
     const runner: Runner = {
-      id: newRunnerId(),
-      firstName: newRunner.firstName.trim(),
-      lastName: newRunner.lastName.trim(),
-      notes: newRunner.notes.trim(),
+      id,
+      firstName: firstName.trim(),
+      lastName: "",
+      photoUrl,
       status: "active",
       personType: "cityteam_client",
     };
-    setState((current) => ({ ...current, runners: [runner, ...current.runners] }));
-    setNewRunner({ firstName: "", lastName: "", notes: "" });
-    setNewRunnerOpen(false);
-
+    const attendance: Attendance = {
+      id: `att-${id}-${todayRun.id}`,
+      runnerId: id,
+      runId: todayRun.id,
+      attended: true,
+      wasVolunteer: false,
+      checkedInBy: adminName,
+    };
     if (hasSupabaseConfig()) {
-      try {
-        await insertRunner(runner);
-        setConnectionState("connected");
-        setMessage("New runner saved to Supabase.");
-      } catch (error) {
-        setConnectionState("error");
-        setMessage(error instanceof Error ? error.message : "Runner added locally, but Supabase did not update.");
-      }
+      // Stable IDs make retrying a partially completed check-in idempotent.
+      await supabaseRequest("runners?on_conflict=id", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=representation",
+        body: JSON.stringify(toRunnerRow(runner)),
+      });
+      await upsertRun(todayRun);
+      await upsertAttendance(attendance);
+      setConnectionState("connected");
     }
+    setState((current) => ({
+      ...current,
+      runners: [runner, ...current.runners.filter((item) => item.id !== id)],
+      runs: current.runs.some((item) => item.id === todayRun.id) ? current.runs : [...current.runs, todayRun],
+      attendance: [...current.attendance.filter((item) => item.id !== attendance.id), attendance],
+    }));
+    setQuery("");
+    setStatusFilter("active");
+    setPersonTypeFilter("cityteam_client");
+    setQuickCheckinNotice(`${runner.firstName} checked in for ${formatShortDate(todayRun.date)}.`);
+    setNewRunnerOpen(false);
   }
 
   async function createPeopleProfile() {
@@ -1991,7 +2002,10 @@ export default function Home() {
                   placeholder="Search name, note, role, size..."
                   aria-label="Search runners"
                 />
-                <button className="primary-action" onClick={() => setNewRunnerOpen(true)}>Add Runner</button>
+                <button className="primary-action" onClick={() => {
+                  setQuickCheckinNotice("");
+                  setNewRunnerOpen(true);
+                }}>New Runner</button>
               </div>
 
               <div className="filter-row" aria-label="Runner status filter">
@@ -2019,28 +2033,9 @@ export default function Home() {
               </div>
 
               {newRunnerOpen && (
-                <div className="new-runner-form">
-                  <input
-                    value={newRunner.firstName}
-                    onChange={(event) => setNewRunner((current) => ({ ...current, firstName: event.target.value }))}
-                    placeholder="First name"
-                    aria-label="New runner first name"
-                  />
-                  <input
-                    value={newRunner.lastName}
-                    onChange={(event) => setNewRunner((current) => ({ ...current, lastName: event.target.value }))}
-                    placeholder="Last name"
-                    aria-label="New runner last name"
-                  />
-                  <input
-                    value={newRunner.notes}
-                    onChange={(event) => setNewRunner((current) => ({ ...current, notes: event.target.value }))}
-                    placeholder="Quick note"
-                    aria-label="New runner note"
-                  />
-                  <button onClick={createRunner}>Save</button>
-                </div>
+                <QuickRunnerCheckin onSave={createRunner} onCancel={() => setNewRunnerOpen(false)} />
               )}
+              {quickCheckinNotice && <p className="quick-checkin-notice" role="status">{quickCheckinNotice}</p>}
 
               <div className={["runner-list", "checkin-runner-list", personTypeFilter === "all" ? "mixed-role-view" : ""].filter(Boolean).join(" ")}>
                 {filteredRunners.map((runner) => (
@@ -2188,19 +2183,6 @@ export default function Home() {
             </ul>
             <button className="primary-action" onClick={() => setCheckinCelebration(null)}>
               Got it
-            </button>
-          </section>
-        </div>
-      )}
-      {runDayDialogOpen && (
-        <div className="celebration-dialog-backdrop" role="dialog" aria-modal="true" aria-label="Run day check-in notice">
-          <section className="celebration-dialog">
-            <div>
-              <p className="eyebrow">Check-in</p>
-              <h3>Please check-in on run day</h3>
-            </div>
-            <button className="primary-action" onClick={() => setRunDayDialogOpen(false)}>
-              OK
             </button>
           </section>
         </div>
@@ -2821,6 +2803,88 @@ function PhotoCropper({
         </div>
       </section>
     </div>
+  );
+}
+
+function QuickRunnerCheckin({ onSave, onCancel }: {
+  onSave: (id: string, firstName: string, photoUrl: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [id] = useState(newRunnerId);
+  const [firstName, setFirstName] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState("");
+  const camera = useRef<HTMLInputElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const submitting = useRef(false);
+
+  async function capture(file?: File) {
+    if (!file) return;
+    setProcessing(true);
+    setError("");
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const scale = Math.min(1, profilePhotoMaxPixels / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Photo unavailable");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      setPhoto(canvas.toDataURL("image/jpeg", 0.9));
+      nameInput.current?.focus();
+    } catch {
+      setError("Could not read this photo. Please take another or choose a different image.");
+    } finally {
+      URL.revokeObjectURL(url);
+      setProcessing(false);
+    }
+  }
+
+  return (
+    <form className="quick-checkin" aria-label="New runner check-in" onSubmit={async (event) => {
+      event.preventDefault();
+      if (submitting.current || processing || !firstName.trim()) return;
+      submitting.current = true;
+      setBusy(true);
+      setError("");
+      try {
+        await onSave(id, firstName, photo);
+      } catch (error) {
+        setError(error instanceof Error && error.message === "The date has changed. Refresh the page and try again."
+          ? error.message
+          : "Check-in wasn't completed. Your photo and name are kept here. Tap Add & Check In to retry.");
+        submitting.current = false;
+        setBusy(false);
+      }
+    }}>
+      <fieldset disabled={busy}>
+        <legend>New runner</legend>
+        <div className="quick-checkin-fields">
+          <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(event) => {
+            void capture(event.target.files?.[0]);
+            event.target.value = "";
+          }} />
+          <button className="quick-checkin-photo" type="button" disabled={processing} onClick={() => camera.current?.click()} aria-label={photo ? "Retake runner photo" : "Take runner photo"}>
+            {photo ? <img src={photo} alt="New runner" /> : <span>Take photo</span>}
+            {photo && <span>Retake</span>}
+            {processing && <span role="status">Loading</span>}
+          </button>
+          <label className="quick-checkin-name">
+            <span>First name</span>
+            <input ref={nameInput} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="First name" autoComplete="off" autoCapitalize="words" enterKeyHint="done" required maxLength={80} />
+          </label>
+          <button type="submit" className="primary-action" disabled={processing || !firstName.trim()}>{busy ? "Checking in..." : "Add & Check In"}</button>
+          <button type="button" className="secondary-action" onClick={onCancel}>Cancel</button>
+        </div>
+        {error && <p role="alert" className="time-error">{error}</p>}
+      </fieldset>
+    </form>
   );
 }
 
