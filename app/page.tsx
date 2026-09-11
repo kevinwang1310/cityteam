@@ -79,6 +79,7 @@ type CheckinCelebration = {
 };
 
 type AppState = {
+  detailsLoading?: boolean;
   runners: Runner[];
   runs: Run[];
   attendance: Attendance[];
@@ -858,15 +859,10 @@ async function loadRaceResults(): Promise<RaceResult[]> {
 }
 
 async function loadSupabaseState(): Promise<AppState> {
-  const [runners, runs, attendance, raceResults, upcomingRuns, upcomingRunVolunteers, admins] = await Promise.all([
+  const [runners, runs, attendance, admins] = await Promise.all([
     supabaseRequest<SupabaseRunnerRow[]>("runners?select=*&order=status.asc,first_name.asc,last_name.asc"),
     supabaseRequest<SupabaseRunRow[]>("runs?select=*&order=run_date.asc"),
     supabaseRequest<SupabaseAttendanceRow[]>("attendance?select=*&order=created_at.asc"),
-    loadRaceResults().catch(() => []),
-    supabaseRequest<SupabaseUpcomingRunRow[]>("upcoming_runs?select=*&order=run_date.asc")
-      .catch(() => []),
-    supabaseRequest<SupabaseUpcomingRunVolunteerRow[]>("upcoming_run_volunteers?select=*&order=created_at.asc")
-      .catch(() => []),
     supabaseRequest<SupabaseAdminRow[]>("admins?select=display_name,is_active&is_active=eq.true&order=display_name.asc")
       .catch(() => []),
   ]);
@@ -875,12 +871,32 @@ async function loadSupabaseState(): Promise<AppState> {
     runners: runners.map(fromRunnerRow),
     runs: runs.map(fromRunRow),
     attendance: attendance.map(fromAttendanceRow),
-    raceResults,
-    upcomingRuns: upcomingRuns.map(fromUpcomingRunRow),
-    upcomingRunVolunteers: upcomingRunVolunteers.map(fromUpcomingRunVolunteerRow),
+    raceResults: [],
+    upcomingRuns: [],
+    upcomingRunVolunteers: [],
+    detailsLoading: true,
     admins: admins.length ? admins.map((admin) => admin.display_name) : configuredAdmins,
     syncedAt: new Date().toISOString(),
   };
+}
+
+async function loadSecondaryState() {
+  const [raceResults, upcomingRuns, upcomingRunVolunteers] = await Promise.all([
+    loadRaceResults(),
+    supabaseRequest<SupabaseUpcomingRunRow[]>("upcoming_runs?select=*&order=run_date.asc"),
+    supabaseRequest<SupabaseUpcomingRunVolunteerRow[]>("upcoming_run_volunteers?select=*&order=created_at.asc"),
+  ]);
+  return { raceResults, upcomingRuns: upcomingRuns.map(fromUpcomingRunRow), upcomingRunVolunteers: upcomingRunVolunteers.map(fromUpcomingRunVolunteerRow), detailsLoading: false };
+}
+
+async function uploadRunnerPhoto(photoUrl: string) {
+  if (!hasSupabaseConfig() || !photoUrl.startsWith("data:")) return photoUrl;
+  const blob = await (await fetch(photoUrl)).blob();
+  if (blob.size > 4_000_000) throw new Error("Choose a photo smaller than 4 MB.");
+  const response = await fetch("/api/photos", { method: "POST", body: blob });
+  const payload = await response.json();
+  if (!response.ok || !payload.photoUrl) throw new Error(payload.error ?? "Could not save photo.");
+  return payload.photoUrl as string;
 }
 
 async function upsertRun(run: Run) {
@@ -1102,11 +1118,13 @@ export default function Home() {
       : "Demo mode. Add the Supabase URL and publishable key to save changes.",
   );
   const [upcomingCalendarRefreshing, setUpcomingCalendarRefreshing] = useState(false);
+  const [coreLoaded, setCoreLoaded] = useState(false);
+  const [detailsError, setDetailsError] = useState(false);
+  const [detailsAttempt, setDetailsAttempt] = useState(0);
   const [newRunnerOpen, setNewRunnerOpen] = useState(false);
   const [quickCheckinNotice, setQuickCheckinNotice] = useState("");
   const [photoEditorRunner, setPhotoEditorRunner] = useState<Runner | null>(null);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
-  const previousSectionRef = useRef<Section>(section);
   const stateRef = useRef<AppState>(state);
   const adminName = state.admins[0] ?? configuredAdmins[0] ?? "Admin";
 
@@ -1125,20 +1143,7 @@ export default function Home() {
         setTodayRunId(today);
         setConnectionState("connected");
         setMessage("Connected to Supabase.");
-
-        try {
-          const reconciled = await reconcileUpcomingRunsFromCalendar(incoming, { silent: true });
-          if (reconciled !== incoming) {
-            setState(reconciled);
-            stateRef.current = reconciled;
-          }
-        } catch (calendarError) {
-          setMessage(
-            calendarError instanceof Error
-              ? `Connected to Supabase. Calendar refresh failed: ${calendarError.message}`
-              : "Connected to Supabase. Calendar refresh failed.",
-          );
-        }
+        setCoreLoaded(true);
       } catch (error) {
         setConnectionState("error");
         setMessage(error instanceof Error ? error.message : "Could not connect to Supabase.");
@@ -1148,8 +1153,22 @@ export default function Home() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!coreLoaded) return;
+    let cancelled = false;
+    setDetailsError(false);
+    loadSecondaryState().then((details) => {
+      if (cancelled) return;
+      setState((current) => ({ ...current, ...details }));
+    }).catch(() => {
+      if (!cancelled) setDetailsError(true);
+    });
+    return () => { cancelled = true; };
+  }, [coreLoaded, detailsAttempt]);
+
   const todayDateValue = todayDate();
   const isAppLoading = connectionState === "loading";
+  const isSectionLoading = isAppLoading || (Boolean(state.detailsLoading) && ["race", "runs", "upcoming"].includes(section));
   const todayUpcomingRun = useMemo(
     () => state.upcomingRuns.find((run) => run.date === todayDateValue),
     [state.upcomingRuns, todayDateValue],
@@ -1165,10 +1184,7 @@ export default function Home() {
   }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
 
   useEffect(() => {
-    const previousSection = previousSectionRef.current;
-    previousSectionRef.current = section;
-
-    if (section !== "upcoming" || previousSection === "upcoming" || !hasSupabaseConfig()) return;
+    if (section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
 
@@ -1178,8 +1194,7 @@ export default function Home() {
         const currentState = stateRef.current;
         const nextState = await reconcileUpcomingRunsFromCalendar(currentState);
         if (!cancelled && nextState !== currentState) {
-          setState(nextState);
-          stateRef.current = nextState;
+          setState((current) => ({ ...current, upcomingRuns: nextState.upcomingRuns, upcomingRunVolunteers: nextState.upcomingRunVolunteers }));
         }
       } catch (error) {
         if (!cancelled) {
@@ -1198,10 +1213,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [section]);
+  }, [section, state.detailsLoading]);
 
   useEffect(() => {
-    if (section !== "upcoming" || !hasSupabaseConfig()) return;
+    if (section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
     let refreshing = false;
@@ -1214,8 +1229,7 @@ export default function Home() {
         const currentState = stateRef.current;
         const nextState = await reconcileUpcomingRunsFromCalendar(currentState, { silent: true });
         if (!cancelled && nextState !== currentState) {
-          setState(nextState);
-          stateRef.current = nextState;
+          setState((current) => ({ ...current, upcomingRuns: nextState.upcomingRuns, upcomingRunVolunteers: nextState.upcomingRunVolunteers }));
           setConnectionState("connected");
           setMessage("Upcoming runs refreshed from Google Calendar.");
         }
@@ -1246,7 +1260,7 @@ export default function Home() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [section]);
+  }, [section, state.detailsLoading]);
 
   const todayAttendance = useMemo(
     () => state.attendance.filter((item) => item.runId === todayRunId && item.attended),
@@ -1746,7 +1760,7 @@ export default function Home() {
       id,
       firstName: firstName.trim(),
       lastName: "",
-      photoUrl,
+      photoUrl: await uploadRunnerPhoto(photoUrl),
       status: "active",
       personType: "cityteam_client",
     };
@@ -1809,6 +1823,11 @@ export default function Home() {
   }
 
   async function saveRunnerPhoto(runnerId: string, photoUrl: string) {
+    photoUrl = await uploadRunnerPhoto(photoUrl);
+    if (hasSupabaseConfig()) {
+      await updateRunnerPhotoUrl(runnerId, photoUrl);
+      setMessage("Profile photo saved.");
+    }
     setState((current) => ({
       ...current,
       runners: current.runners.map((runner) =>
@@ -1817,16 +1836,6 @@ export default function Home() {
     }));
     setPhotoEditorRunner(null);
 
-    if (hasSupabaseConfig()) {
-      try {
-        await updateRunnerPhotoUrl(runnerId, photoUrl);
-        setConnectionState("connected");
-        setMessage("Profile photo saved to Supabase.");
-      } catch (error) {
-        setConnectionState("error");
-        setMessage(error instanceof Error ? error.message : "Photo saved locally, but Supabase did not update.");
-      }
-    }
   }
 
   async function saveRunnerNotes(runnerId: string, notes: string) {
@@ -1978,6 +1987,7 @@ export default function Home() {
       </aside>
 
       <section className="workspace">
+        {detailsError && <div role="alert"><p>Could not load race and upcoming-run details.</p><button className="secondary-action" onClick={() => setDetailsAttempt((attempt) => attempt + 1)}>Retry</button></div>}
         {section === "checkin" && isAppLoading && (
           <RecordsLoadingState />
         )}
@@ -2103,10 +2113,10 @@ export default function Home() {
             }}
           />
         )}
-        {section === "race" && isAppLoading && (
+        {section === "race" && isSectionLoading && !detailsError && (
           <RecordsLoadingState />
         )}
-        {section === "race" && !isAppLoading && (
+        {section === "race" && !isSectionLoading && (
           <RaceTimerSection
             state={state}
             todayRun={todayRun}
@@ -2130,10 +2140,10 @@ export default function Home() {
             }}
           />
         )}
-        {section === "runs" && isAppLoading && (
+        {section === "runs" && isSectionLoading && !detailsError && (
           <RecordsLoadingState />
         )}
-        {section === "runs" && !isAppLoading && (
+        {section === "runs" && !isSectionLoading && (
           <RunsSection
             state={state}
             onToggleAttendance={updateRunAttendance}
@@ -2144,10 +2154,10 @@ export default function Home() {
             }}
           />
         )}
-        {section === "upcoming" && isAppLoading && (
+        {section === "upcoming" && isSectionLoading && !detailsError && (
           <RecordsLoadingState />
         )}
-        {section === "upcoming" && !isAppLoading && (
+        {section === "upcoming" && !isSectionLoading && (
           <UpcomingRunsSection
             state={state}
             onCreateRun={createUpcomingRun}
@@ -2193,7 +2203,8 @@ export default function Home() {
 
 function Avatar({ runner }: { runner: Runner }) {
   if (runner.photoUrl) {
-    return <img className="avatar" src={runner.photoUrl} alt={`${runnerName(runner)} profile`} />;
+    const src = runner.photoUrl.startsWith("/api/photos/") ? `${runner.photoUrl}?size=thumb` : runner.photoUrl;
+    return <img className="avatar" src={src} loading="lazy" decoding="async" alt={`${runnerName(runner)} profile`} />;
   }
   return <span className="avatar fallback">{initials(runner)}</span>;
 }
@@ -2571,7 +2582,7 @@ function ProfileCard({
         <div className="profile-editor-section profile-section-heading">
           <span className="profile-section-label race-results">5K Times</span>
         </div>
-        {profileRaceResults.length ? (
+        {state.detailsLoading ? <RecordsLoadingState /> : profileRaceResults.length ? (
           <>
             <div className="profile-stats race-stats">
               <span><strong>{formatRaceTime(bestRaceResult.result.finishSeconds)}</strong> Best</span>
@@ -2642,7 +2653,7 @@ function PhotoCropper({
 }: {
   runner: Runner;
   onCancel: () => void;
-  onSave: (photoUrl: string) => void;
+  onSave: (photoUrl: string) => void | Promise<void>;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -2702,7 +2713,7 @@ function PhotoCropper({
     setSaving(true);
     setError("");
     try {
-      onSave(await createCroppedImage());
+      await onSave(await createCroppedImage());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not crop that image.");
       setSaving(false);
