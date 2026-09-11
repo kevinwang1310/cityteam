@@ -2002,7 +2002,7 @@ export default function Home() {
                   placeholder="Search name, note, role, size..."
                   aria-label="Search runners"
                 />
-                <button className="primary-action" onClick={() => {
+                <button className="primary-action" type="button" aria-haspopup="dialog" onClick={() => {
                   setQuickCheckinNotice("");
                   setNewRunnerOpen(true);
                 }}>New Runner</button>
@@ -2819,6 +2819,13 @@ function QuickRunnerCheckin({ onSave, onCancel }: {
   const camera = useRef<HTMLInputElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    return () => dialog?.close();
+  }, []);
 
   async function capture(file?: File) {
     if (!file) return;
@@ -2847,6 +2854,10 @@ function QuickRunnerCheckin({ onSave, onCancel }: {
   }
 
   return (
+    <dialog ref={dialogRef} className="quick-checkin-dialog" aria-label="New runner check-in" onCancel={(event) => {
+      event.preventDefault();
+      if (!submitting.current) onCancel();
+    }}>
     <form className="quick-checkin" aria-label="New runner check-in" onSubmit={async (event) => {
       event.preventDefault();
       if (submitting.current || processing || !firstName.trim()) return;
@@ -2885,6 +2896,7 @@ function QuickRunnerCheckin({ onSave, onCancel }: {
         {error && <p role="alert" className="time-error">{error}</p>}
       </fieldset>
     </form>
+    </dialog>
   );
 }
 

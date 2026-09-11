@@ -1664,10 +1664,23 @@ a.nav-item {
   font-variant-numeric: tabular-nums;
 }
 
+.quick-checkin-dialog {
+  width: min(520px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 24px;
+  border: 1px solid #cad7d0;
+  border-radius: 8px;
+  background: #fff;
+  color: #123044;
+  box-shadow: 0 16px 48px #0003;
+  overflow-y: auto;
+}
+
+.quick-checkin-dialog::backdrop { background: #102a3d80; }
+
 .quick-checkin {
-  padding: 16px 0;
-  border-block: 1px solid #cad7d0;
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .quick-checkin fieldset {
@@ -1686,11 +1699,14 @@ a.nav-item {
 
 .quick-checkin-fields {
   display: grid;
-  grid-template-columns: 96px minmax(120px, 320px) auto auto;
+  grid-template-columns: 96px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  justify-content: start;
+  justify-content: stretch;
 }
+
+.quick-checkin-fields > .primary-action,
+.quick-checkin-fields > .secondary-action { grid-column: 1 / -1; }
 
 .quick-checkin-photo {
   width: 96px;
@@ -1715,7 +1731,15 @@ a.nav-item {
   padding: 3px;
 }
 .quick-checkin-name { display: grid; gap: 6px; min-width: 0; }
-.quick-checkin-name input { width: 100%; min-width: 0; font-size: 18px; min-height: 48px; }
+.quick-checkin-name input {
+  width: 100%; min-width: 0; font-size: 18px; min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #aabcb4;
+  border-radius: 6px;
+  background: #fff;
+  color: #123044;
+}
+.quick-checkin-name input:focus { outline: 2px solid #287a60; outline-offset: 2px; }
 .quick-checkin-notice { color: #176347; font-weight: 600; }
 .quick-checkin-fields > button { min-height: 44px; }
 @media (max-width: 760px) {
