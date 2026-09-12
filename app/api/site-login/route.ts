@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const sitePassword = process.env.SITE_PASSWORD ?? "runningwithpurpose";
-const accessCookieName = "cityteam_run_club_access";
-const accessToken = process.env.SITE_ACCESS_TOKEN ?? "cityteam-run-club-access-v1";
+import { accessCookieName, accessToken, adminPassword } from "../../../lib/site-access";
 
 function safeRedirectPath(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return "/";
   }
   return value;
@@ -16,7 +14,9 @@ export async function POST(request: NextRequest) {
   const password = formData.get("password");
   const nextPath = safeRedirectPath(formData.get("next"));
 
-  if (password !== sitePassword) {
+  const isViewerPassword = password === "runners" || password === "guestrunner";
+  const role = isViewerPassword ? "viewer" : password === adminPassword() ? "admin" : null;
+  if (!role) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "1");
     loginUrl.searchParams.set("next", nextPath);
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url), 303);
-  response.cookies.set(accessCookieName, accessToken, {
+  response.cookies.set(accessCookieName, accessToken(role), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

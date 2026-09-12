@@ -3376,3 +3376,19 @@ code {
     grid-template-columns: 1fr;
   }
 }
+.session-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.session-controls a {
+  color: #fff;
+  padding: 10px 0;
+  text-decoration: underline;
+}

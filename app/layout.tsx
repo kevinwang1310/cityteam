@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { cookies } from "next/headers";
+import { accessCookieName, accessRole } from "../lib/site-access";
+import { AccessProvider } from "./access-context";
 
 export const metadata: Metadata = {
   title: "CityTeam Run Club",
@@ -23,14 +26,15 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const role = accessRole((await cookies()).get(accessCookieName)?.value);
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><AccessProvider viewOnly={role !== "admin"}>{children}</AccessProvider></body>
     </html>
   );
 }

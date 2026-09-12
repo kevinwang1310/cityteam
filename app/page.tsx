@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useViewOnly } from "./access-context";
 
 type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
@@ -698,11 +699,11 @@ async function supabaseRequest<T>(
     throw new Error("Supabase URL and publishable key are not configured.");
   }
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const isRead = !init.method || init.method === "GET";
+  const response = await fetch(isRead ? `${SUPABASE_URL}/rest/v1/${path}` : `/api/data/${path}`, {
     ...init,
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      ...(isRead ? { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } : {}),
       "Content-Type": "application/json",
       ...(init.prefer ? { Prefer: init.prefer } : {}),
       ...init.headers,
@@ -1090,6 +1091,7 @@ async function updateRunnerGear(
 }
 
 export default function Home() {
+  const viewOnly = useViewOnly();
   const [state, setState] = useState<AppState>(hasSupabaseConfig() ? emptyState : demoState);
   const [section, setSection] = useState<Section>("checkin");
   const [query, setQuery] = useState("");
@@ -1184,7 +1186,7 @@ export default function Home() {
   }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
 
   useEffect(() => {
-    if (section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
+    if (viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
 
@@ -1213,10 +1215,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [section, state.detailsLoading]);
+  }, [section, state.detailsLoading, viewOnly]);
 
   useEffect(() => {
-    if (section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
+    if (viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
     let refreshing = false;
@@ -1260,7 +1262,7 @@ export default function Home() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [section, state.detailsLoading]);
+  }, [section, state.detailsLoading, viewOnly]);
 
   const todayAttendance = useMemo(
     () => state.attendance.filter((item) => item.runId === todayRunId && item.attended),
@@ -1961,7 +1963,7 @@ export default function Home() {
         </div>
 
         <nav className="nav-list">
-          {sections.map((item) => (
+          {sections.filter((item) => !viewOnly || item.id !== "settings").map((item) => (
             <button
               key={item.id}
               className={section === item.id ? "nav-item active" : "nav-item"}
@@ -1983,6 +1985,10 @@ export default function Home() {
             Photo Album
           </a>
         </nav>
+        <div className="session-controls">
+          <span>{viewOnly ? "View only" : "Administrator"}</span>
+          <a href="/login">Switch login</a>
+        </div>
 
       </aside>
 
@@ -2012,10 +2018,10 @@ export default function Home() {
                   placeholder="Search name, note, role, size..."
                   aria-label="Search runners"
                 />
-                <button className="primary-action" type="button" aria-haspopup="dialog" onClick={() => {
+                {!viewOnly && <button className="primary-action" type="button" aria-haspopup="dialog" onClick={() => {
                   setQuickCheckinNotice("");
                   setNewRunnerOpen(true);
-                }}>New Runner</button>
+                }}>New Runner</button>}
               </div>
 
               <div className="filter-row" aria-label="Runner status filter">
@@ -2064,10 +2070,11 @@ export default function Home() {
                     </button>
                     <div className="row-actions">
                       <button
+                        disabled={viewOnly}
                         className={isCheckedIn(runner.id) ? "present-toggle active" : "present-toggle"}
                         onClick={() => updateAttendance(runner.id, { attended: !isCheckedIn(runner.id) })}
                       >
-                        {isCheckedIn(runner.id) ? "Present" : "Check-in"}
+                        {isCheckedIn(runner.id) ? "Present" : viewOnly ? "Not checked in" : "Check-in"}
                       </button>
                     </div>
                   </article>
@@ -2272,8 +2279,9 @@ function ProfileCard({
   onCloseMobile: () => void;
   startInEditMode?: boolean;
 }) {
+  const viewOnly = useViewOnly();
   const panelRef = useRef<HTMLElement | null>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(startInEditMode);
+  const [isEditingProfile, setIsEditingProfile] = useState(!viewOnly && startInEditMode);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState(() => profileDraftFromRunner(runner));
@@ -2320,9 +2328,9 @@ function ProfileCard({
         ) : (
           <div className="profile-photo-large fallback">{initials(runner)}</div>
         )}
-        <button className="photo-edit-button" onClick={() => onEditPhoto(runner)}>
+        {!viewOnly && <button className="photo-edit-button" onClick={() => onEditPhoto(runner)}>
           {runner.photoUrl ? "Change Photo" : "Upload Photo"}
-        </button>
+        </button>}
       </div>
 
       <div className="profile-hero">
@@ -2330,9 +2338,9 @@ function ProfileCard({
           <p className="eyebrow">{statusLabels[normalizeRunnerStatus(runner.status)]}</p>
           <h3>{runnerName(runner)}</h3>
         </div>
-        <button className="text-action" onClick={() => setIsEditingProfile(true)} disabled={isEditingProfile}>
+        {!viewOnly && <button className="text-action" onClick={() => setIsEditingProfile(true)} disabled={isEditingProfile}>
           Edit
-        </button>
+        </button>}
       </div>
 
       <section>
@@ -2606,7 +2614,7 @@ function ProfileCard({
         )}
       </section>
 
-      <section className="danger-zone">
+      {!viewOnly && <section className="danger-zone">
         {isConfirmingDelete ? (
           <>
             <p>
@@ -2641,7 +2649,7 @@ function ProfileCard({
             Delete Profile
           </button>
         )}
-      </section>
+      </section>}
     </aside>
   );
 }
@@ -2924,6 +2932,7 @@ function RaceTimerSection({
   onDeleteFinishTime: (resultId: string) => Promise<void>;
   onOpenProfile: (runnerId: string) => void;
 }) {
+  const viewOnly = useViewOnly();
   const sortedRuns = [todayRun, ...state.runs.filter((run) => run.id !== todayRun.id)]
     .sort((a, b) => b.date.localeCompare(a.date));
   // Follow today's check-in run unless the user explicitly selects a past race.
@@ -3066,17 +3075,17 @@ function RaceTimerSection({
               <h4>{selectedRun.title}</h4>
               <span>{finishedCount} of {checkedInClients.length} finished</span>
             </div>
-            <div className="race-clock" aria-live="polite">
+            {!viewOnly && <div className="race-clock" aria-live="polite">
               {formatRaceTime(elapsedSeconds)}
-            </div>
-            <div className="race-controls">
+            </div>}
+            {!viewOnly && <div className="race-controls">
               {isRunning ? (
                 <button className="secondary-action" onClick={pauseRace}>Pause</button>
               ) : (
                 <button className="primary-action" onClick={startRace}>Start Race</button>
               )}
               <button className="secondary-action" onClick={resetRaceClock}>Reset Clock</button>
-            </div>
+            </div>}
           </div>
 
           {fastestRunner && fastestResult && (
@@ -3102,7 +3111,7 @@ function RaceTimerSection({
                         <small>{result ? `Finished ${formatRaceTime(result.finishSeconds)}` : "Waiting for finish"}</small>
                       </span>
                     </button>
-                    <button
+                    {!viewOnly && <><button
                       className={result ? "finish-button saved" : "finish-button"}
                       disabled={!elapsedSeconds || pendingTimes[runner.id]}
                       onClick={() => saveManualTime(runner.id, formatRaceTime(elapsedSeconds))}
@@ -3148,7 +3157,7 @@ function RaceTimerSection({
                           setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
                         }
                       }}>Clear</button>}
-                    </div>
+                    </div></>}
                   </article>
                 );
               })}
@@ -3193,6 +3202,7 @@ function PeopleSection({
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
+  const viewOnly = useViewOnly();
   const [statusFilter, setStatusFilter] = useState<PeopleStatusFilter>("active");
   const [personTypeFilter, setPersonTypeFilter] = useState<PersonType | "all">("cityteam_client");
   const [query, setQuery] = useState("");
@@ -3239,7 +3249,7 @@ function PeopleSection({
               placeholder="Search by name..."
               aria-label="Search people by name"
             />
-            <button
+            {!viewOnly && <button
               className="primary-action"
               disabled={creatingProfile}
               onClick={async () => {
@@ -3252,7 +3262,7 @@ function PeopleSection({
               }}
             >
               {creatingProfile ? "Creating..." : "New"}
-            </button>
+            </button>}
           </div>
           <div className="filter-row" aria-label="People status filter">
             {peopleStatusOptions.map((status) => (
@@ -4029,6 +4039,7 @@ function RunsSection({
   onDeleteRun: (runId: string) => Promise<void>;
   onOpenProfile: (runnerId: string) => void;
 }) {
+  const viewOnly = useViewOnly();
   const [editingRunId, setEditingRunId] = useState("");
   const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState("");
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
@@ -4089,9 +4100,9 @@ function RunsSection({
                         setConfirmingDeleteRunId("");
                       }}
                     >
-                      {isEditing ? "Done" : "Edit Attendance"}
+                      {isEditing ? "Done" : viewOnly ? "View Attendance" : "Edit Attendance"}
                     </button>
-                    <button
+                    {!viewOnly && <button
                       className="danger-action"
                       onClick={() => {
                         setConfirmingDeleteRunId(isConfirmingDelete ? "" : run.id);
@@ -4099,7 +4110,7 @@ function RunsSection({
                       }}
                     >
                       Delete
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 {isConfirmingDelete && (
@@ -4141,6 +4152,7 @@ function RunsSection({
                         >
                           <input
                             type="checkbox"
+                            disabled={viewOnly}
                             checked={checked}
                             onChange={(event) => onToggleAttendance(runner.id, run.id, event.target.checked)}
                           />
@@ -4182,6 +4194,7 @@ function UpcomingRunsSection({
   isRefreshingCalendar: boolean;
   isLoading: boolean;
 }) {
+  const viewOnly = useViewOnly();
   const [runDate, setRunDate] = useState(nextSaturdayDate());
   const [runTitle, setRunTitle] = useState("");
   const [runStartTime, setRunStartTime] = useState("08:00");
@@ -4315,7 +4328,8 @@ function UpcomingRunsSection({
 
                 {isExpanded && (
                   <div className="upcoming-run-details">
-                    <div className="upcoming-title-editor upcoming-details-editor">
+                    {viewOnly && <p>{formatRunSchedule(run)}{run.location ? ` | ${run.location}` : ""}</p>}
+                    {!viewOnly && <div className="upcoming-title-editor upcoming-details-editor">
                       <label>
                         <span>Run date</span>
                         <input
@@ -4395,9 +4409,9 @@ function UpcomingRunsSection({
                       >
                         {savingTitleId === run.id ? "Saving..." : "Save Details"}
                       </button>
-                    </div>
+                    </div>}
 
-                    <label className="snack-select">
+                    {!viewOnly && <label className="snack-select">
                       <span>Snack volunteer</span>
                       <select
                         value={run.snackRunnerId ?? ""}
@@ -4410,7 +4424,7 @@ function UpcomingRunsSection({
                           </option>
                         ))}
                       </select>
-                    </label>
+                    </label>}
 
                     <div className="volunteer-rsvp-grid" aria-label={`Volunteer RSVPs for ${run.title}`}>
                       {activeVolunteers.map((volunteer) => {
@@ -4442,7 +4456,7 @@ function UpcomingRunsSection({
                               <strong>{runnerName(volunteer)}</strong>
                               <small>{statusLabel}</small>
                             </span>
-                            <div className="rsvp-actions">
+                            {!viewOnly && <div className="rsvp-actions">
                               <button
                                 className={response?.attending ? "rsvp-action active" : "rsvp-action"}
                                 onClick={() => onToggleVolunteer(run.id, volunteer.id, true)}
@@ -4455,8 +4469,8 @@ function UpcomingRunsSection({
                               >
                                 Decline
                               </button>
-                            </div>
-                            {response && !response.attending && (
+                            </div>}
+                            {!viewOnly && response && !response.attending && (
                               <label className="decline-note">
                                 <span>Decline note</span>
                                 <textarea
@@ -4472,7 +4486,7 @@ function UpcomingRunsSection({
                       })}
                     </div>
 
-                    <div className="upcoming-run-actions">
+                    {!viewOnly && <div className="upcoming-run-actions">
                       {!isConfirmingDelete ? (
                         <button
                           className="danger-action upcoming-delete-action"
@@ -4508,7 +4522,7 @@ function UpcomingRunsSection({
                           </div>
                         </div>
                       )}
-                    </div>
+                    </div>}
 
                   </div>
                 )}
@@ -4526,7 +4540,7 @@ function UpcomingRunsSection({
         )}
       </div>
 
-      <div className="upcoming-run-form">
+      {!viewOnly && <div className="upcoming-run-form">
         <label>
           <span>Run date</span>
           <input
@@ -4593,7 +4607,7 @@ function UpcomingRunsSection({
         >
           {savingDate ? "Saving..." : "Add Run Date"}
         </button>
-      </div>
+      </div>}
     </section>
   );
 }
