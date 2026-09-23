@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useViewOnly } from "./access-context";
+import { googleCalendarSyncEnabled } from "../lib/calendar-sync";
 
 type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
@@ -991,6 +992,7 @@ async function deleteUpcomingRunRecords(runId: string) {
 }
 
 async function syncUpcomingRunCalendar(action: "upsert" | "delete", run: UpcomingRun) {
+  if (!googleCalendarSyncEnabled) return { ok: true, configured: false };
   const response = await fetch("/api/google-calendar/upcoming-run", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1006,6 +1008,7 @@ async function syncUpcomingRunCalendar(action: "upsert" | "delete", run: Upcomin
 }
 
 async function reconcileUpcomingRunsCalendar(runs: UpcomingRun[]) {
+  if (!googleCalendarSyncEnabled) return { ok: true, configured: false, missingRunIds: [], syncedRuns: [] };
   const response = await fetch("/api/google-calendar/upcoming-run", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1186,7 +1189,7 @@ export default function Home() {
   }, [state.runs, todayDateValue, todayRunId, todayUpcomingRun]);
 
   useEffect(() => {
-    if (viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
+    if (!googleCalendarSyncEnabled || viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
 
@@ -1218,7 +1221,7 @@ export default function Home() {
   }, [section, state.detailsLoading, viewOnly]);
 
   useEffect(() => {
-    if (viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
+    if (!googleCalendarSyncEnabled || viewOnly || section !== "upcoming" || state.detailsLoading || !hasSupabaseConfig()) return;
 
     let cancelled = false;
     let refreshing = false;
@@ -4497,7 +4500,7 @@ function UpcomingRunsSection({
                       ) : (
                         <div className="delete-confirmation upcoming-delete-confirmation">
                           <span>
-                            Delete {run.title}? This removes the scheduled run, volunteer RSVPs, and its Google Calendar event.
+                            Delete {run.title}? This removes the scheduled run and volunteer RSVPs from the app. Google Calendar is not changed.
                           </span>
                           <div>
                             <button className="secondary-action" onClick={() => setConfirmingDeleteRunId("")}>
@@ -4650,9 +4653,8 @@ function SettingsSection() {
           <code>SUPABASE_SERVICE_ROLE_KEY</code> so race results are not written directly from the browser.
         </p>
         <p>
-          Google Calendar sync uses <code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code>,{" "}
-          <code>GOOGLE_PRIVATE_KEY</code>, and optional <code>GOOGLE_CALENDAR_ID</code>. Share the
-          run club calendar with the service account so upcoming run dates can be added and removed.
+          Google Calendar sync is disabled. Manage upcoming runs in this app;
+          changes do not update Google Calendar, and calendar edits are not imported.
         </p>
       </div>
     </section>

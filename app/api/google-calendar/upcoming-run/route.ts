@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { googleCalendarSyncEnabled } from "../../../../lib/calendar-sync";
 
 export const runtime = "nodejs";
 
@@ -255,6 +256,9 @@ async function deleteCalendarEvents(runId: string, accessToken: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!googleCalendarSyncEnabled) {
+    return NextResponse.json({ ok: true, configured: false, disabled: true, missingRunIds: [], syncedRuns: [] });
+  }
   const body = (await request.json()) as { action?: CalendarAction; run?: CalendarRun; runs?: CalendarRun[] };
 
   if (body.action === "reconcile") {
