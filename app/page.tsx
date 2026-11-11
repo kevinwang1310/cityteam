@@ -18,6 +18,7 @@ type Runner = {
   firstName: string;
   lastName: string;
   photoUrl?: string;
+  email?: string;
   status: RunnerStatus;
   personType: PersonType;
   notes?: string;
@@ -98,6 +99,7 @@ type SupabaseRunnerRow = {
   last_name: string | null;
   nickname: string | null;
   photo_url: string | null;
+  email?: string | null;
   status: LegacyRunnerStatus;
   person_type?: PersonType | null;
   team_role: string | null;
@@ -726,6 +728,7 @@ function fromRunnerRow(row: SupabaseRunnerRow): Runner {
     firstName: row.first_name,
     lastName: row.last_name ?? "",
     photoUrl: row.photo_url ?? undefined,
+    email: row.email ?? undefined,
     status: normalizeRunnerStatus(row.status),
     personType: row.person_type ?? "cityteam_client",
     notes: row.notes ?? undefined,
@@ -748,6 +751,7 @@ function toRunnerRow(runner: Runner): SupabaseRunnerRow {
     last_name: runner.lastName || null,
     nickname: null,
     photo_url: runner.photoUrl || null,
+    email: runner.email?.trim() || null,
     status: normalizeRunnerStatus(runner.status),
     person_type: runner.personType,
     team_role: null,
@@ -1286,6 +1290,7 @@ export default function Home() {
         return [
           runner.firstName,
           runner.lastName,
+    runner.email ?? "",
           personTypeLabels[runner.personType],
           runner.notes,
           runner.tshirtSize,
@@ -2223,6 +2228,7 @@ function profileDraftFromRunner(runner?: Runner) {
   return {
     firstName: runner?.firstName ?? "",
     lastName: runner?.lastName ?? "",
+    email: runner?.email ?? "",
     status: normalizeRunnerStatus(runner?.status ?? "active"),
     personType: runner?.personType ?? "cityteam_client",
     notes: runner?.notes ?? "",
@@ -2371,6 +2377,17 @@ function ProfileCard({
               />
             ) : (
               <strong className="read-only-field">{runner.lastName || "Not set"}</strong>
+            )}
+          </label>
+          <label className="wide-field">
+            <span>Email</span>
+            {isEditingProfile ? (
+              <input type="email" autoComplete="email" maxLength={254}
+                value={profileDraft.email}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, email: event.target.value }))}
+                placeholder="Email address" />
+            ) : (
+              <strong className="read-only-field" style={{ overflowWrap: "anywhere" }}>{runner.email ? <a href={`mailto:${runner.email}`}>{runner.email}</a> : "Not set"}</strong>
             )}
           </label>
           <label>
@@ -2527,9 +2544,12 @@ function ProfileCard({
                   setIsSavingProfile(true);
                   setProfileError("");
                   try {
+                    const email = profileDraft.email.trim();
+                    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
                     await onSaveProfile(runner.id, {
                       firstName: profileDraft.firstName.trim(),
                       lastName: profileDraft.lastName.trim(),
+                      email: profileDraft.email.trim(),
                       status: profileDraft.status,
                       personType: profileDraft.personType,
                       notes: profileDraft.notes.trim(),
