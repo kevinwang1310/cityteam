@@ -9,7 +9,7 @@ type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
 type ShoeStatus = "no_shoes" | "demo_shoes" | "new_shoes" | "new_and_demo_shoes";
-type Section = "checkin" | "race" | "people" | "celebration" | "runs" | "upcoming" | "settings";
+type Section = "checkin" | "people" | "celebration" | "runs" | "upcoming" | "settings";
 type ChartRange = 8 | 16 | "all";
 type PeopleStatusFilter = "active" | "inactive" | "all";
 
@@ -404,7 +404,6 @@ const emptyState: AppState = {
 
 const sections: { id: Section; label: string }[] = [
   { id: "checkin", label: "Check In" },
-  { id: "race", label: "Race Timer" },
   { id: "people", label: "People" },
   { id: "celebration", label: "Celebration" },
   { id: "runs", label: "Trends" },
@@ -1177,7 +1176,7 @@ export default function Home() {
 
   const todayDateValue = todayDate();
   const isAppLoading = connectionState === "loading";
-  const isSectionLoading = isAppLoading || (Boolean(state.detailsLoading) && ["race", "runs", "upcoming"].includes(section));
+  const isSectionLoading = isAppLoading || (Boolean(state.detailsLoading) && ["runs", "upcoming"].includes(section));
   const todayUpcomingRun = useMemo(
     () => state.upcomingRuns.find((run) => run.date === todayDateValue),
     [state.upcomingRuns, todayDateValue],
@@ -2128,21 +2127,6 @@ export default function Home() {
             }}
           />
         )}
-        {section === "race" && isSectionLoading && !detailsError && (
-          <RecordsLoadingState />
-        )}
-        {section === "race" && !isSectionLoading && (
-          <RaceTimerSection
-            state={state}
-            todayRun={todayRun}
-            onSaveFinishTime={saveRaceFinishTime}
-            onDeleteFinishTime={deleteRaceFinishTime}
-            onOpenProfile={(runnerId) => {
-              openRunnerProfile(runnerId);
-              setSection("checkin");
-            }}
-          />
-        )}
         {section === "celebration" && isAppLoading && (
           <RecordsLoadingState />
         )}
@@ -2939,266 +2923,6 @@ function QuickRunnerCheckin({ onSave, onCancel }: {
       </fieldset>
     </form>
     </dialog>
-  );
-}
-
-function RaceTimerSection({
-  state,
-  todayRun,
-  onSaveFinishTime,
-  onDeleteFinishTime,
-  onOpenProfile,
-}: {
-  state: AppState;
-  todayRun: Run;
-  onSaveFinishTime: (runId: string, runnerId: string, finishSeconds: number) => Promise<void>;
-  onDeleteFinishTime: (resultId: string) => Promise<void>;
-  onOpenProfile: (runnerId: string) => void;
-}) {
-  const viewOnly = useViewOnly();
-  const sortedRuns = [todayRun, ...state.runs.filter((run) => run.id !== todayRun.id)]
-    .sort((a, b) => b.date.localeCompare(a.date));
-  // Follow today's check-in run unless the user explicitly selects a past race.
-  const [chosenRunId, setChosenRunId] = useState<string | null>(null);
-  const selectedRunId = chosenRunId ?? todayRun.id;
-  const [raceStartedAt, setRaceStartedAt] = useState<number | null>(null);
-  const [baseElapsedSeconds, setBaseElapsedSeconds] = useState(0);
-  const [liveElapsedSeconds, setLiveElapsedSeconds] = useState(0);
-  const [draftTimes, setDraftTimes] = useState<Record<string, string>>({});
-  const [editingTimes, setEditingTimes] = useState<Record<string, boolean>>({});
-  const [timeErrors, setTimeErrors] = useState<Record<string, string>>({});
-  const [pendingTimes, setPendingTimes] = useState<Record<string, boolean>>({});
-  const selectedRun = sortedRuns.find((run) => run.id === selectedRunId);
-  const isRunning = raceStartedAt !== null;
-  const elapsedSeconds = isRunning ? liveElapsedSeconds : baseElapsedSeconds;
-  const resultByRunnerId = new Map(
-    state.raceResults
-      .filter((result) => result.runId === selectedRunId)
-      .map((result) => [result.runnerId, result]),
-  );
-  const checkedInRunnerIds = new Set(
-    state.attendance
-      .filter((item) => item.runId === selectedRunId && item.attended)
-      .map((item) => item.runnerId),
-  );
-  const checkedInClients = state.runners
-    .filter((runner) => runner.personType === "cityteam_client" && checkedInRunnerIds.has(runner.id))
-    .sort((a, b) => {
-      const aResult = resultByRunnerId.get(a.id);
-      const bResult = resultByRunnerId.get(b.id);
-      if (aResult && bResult) return aResult.finishSeconds - bResult.finishSeconds;
-      if (aResult) return 1;
-      if (bResult) return -1;
-      return runnerName(a).localeCompare(runnerName(b));
-    });
-  const finishedCount = checkedInClients.filter((runner) => resultByRunnerId.has(runner.id)).length;
-  const fastestResult = state.raceResults
-    .filter((result) => result.runId === selectedRunId)
-    .sort((a, b) => a.finishSeconds - b.finishSeconds)[0];
-  const fastestRunner = fastestResult ? state.runners.find((runner) => runner.id === fastestResult.runnerId) : undefined;
-
-  useEffect(() => {
-    const startedAt = raceStartedAt;
-    if (startedAt === null) return;
-    const intervalId = window.setInterval(() => {
-      setLiveElapsedSeconds(baseElapsedSeconds + Math.floor((Date.now() - startedAt) / 1000));
-    }, 250);
-    return () => window.clearInterval(intervalId);
-  }, [baseElapsedSeconds, raceStartedAt]);
-
-  useEffect(() => {
-    setDraftTimes({});
-    setEditingTimes({});
-    setTimeErrors({});
-  }, [selectedRunId]);
-
-  function startRace() {
-    setRaceStartedAt(Date.now());
-    setLiveElapsedSeconds(baseElapsedSeconds);
-  }
-
-  function pauseRace() {
-    setBaseElapsedSeconds(elapsedSeconds);
-    setRaceStartedAt(null);
-  }
-
-  function resetRaceClock() {
-    setRaceStartedAt(null);
-    setBaseElapsedSeconds(0);
-    setLiveElapsedSeconds(0);
-  }
-
-  async function saveManualTime(runnerId: string, value: string) {
-    const seconds = parseRaceTime(value);
-    if (seconds === undefined) {
-      setTimeErrors((current) => ({ ...current, [runnerId]: "Use MM:SS" }));
-      return;
-    }
-    setTimeErrors((current) => ({ ...current, [runnerId]: "" }));
-    setPendingTimes((current) => ({ ...current, [runnerId]: true }));
-    try {
-      await onSaveFinishTime(selectedRunId, runnerId, seconds);
-      setDraftTimes((current) => ({ ...current, [runnerId]: formatRaceTime(seconds) }));
-      setEditingTimes((current) => ({ ...current, [runnerId]: false }));
-    } catch (error) {
-      setTimeErrors((current) => ({ ...current, [runnerId]: error instanceof Error ? error.message : "Could not save. Try again." }));
-    } finally {
-      setPendingTimes((current) => ({ ...current, [runnerId]: false }));
-    }
-  }
-
-  async function deleteTime(result: RaceResult, name: string) {
-    if (!window.confirm(`Clear ${name}'s finish time? This removes it from their profile and trends.`)) return;
-    setPendingTimes((current) => ({ ...current, [result.runnerId]: true }));
-    try {
-      await onDeleteFinishTime(result.id);
-      setDraftTimes((current) => ({ ...current, [result.runnerId]: "" }));
-      setEditingTimes((current) => ({ ...current, [result.runnerId]: false }));
-      setTimeErrors((current) => ({ ...current, [result.runnerId]: "" }));
-    } catch (error) {
-      setTimeErrors((current) => ({ ...current, [result.runnerId]: error instanceof Error ? error.message : "Could not delete. Try again." }));
-    } finally {
-      setPendingTimes((current) => ({ ...current, [result.runnerId]: false }));
-    }
-  }
-
-  return (
-    <section className="content-section race-section">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">5K race day</p>
-          <h3>Race Timer</h3>
-        </div>
-        <div className="race-run-picker">
-          <label>
-            <span>Race</span>
-            <select
-              value={selectedRunId}
-              disabled={Object.values(pendingTimes).some(Boolean)}
-              onChange={(event) => {
-                setChosenRunId(event.target.value === todayRun.id ? null : event.target.value);
-                resetRaceClock();
-              }}
-            >
-              {sortedRuns.map((run) => (
-                <option key={run.id} value={run.id}>
-                  {run.id === todayRun.id ? "Today - " : ""}{formatShortDate(run.date)} - {run.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      {selectedRun ? (
-        <>
-          <div className="race-hero-panel">
-            <div>
-              <p className="eyebrow">{formatShortDate(selectedRun.date)}</p>
-              <h4>{selectedRun.title}</h4>
-              <span>{finishedCount} of {checkedInClients.length} finished</span>
-            </div>
-            {!viewOnly && <div className="race-clock" aria-live="polite">
-              {formatRaceTime(elapsedSeconds)}
-            </div>}
-            {!viewOnly && <div className="race-controls">
-              {isRunning ? (
-                <button className="secondary-action" onClick={pauseRace}>Pause</button>
-              ) : (
-                <button className="primary-action" onClick={startRace}>Start Race</button>
-              )}
-              <button className="secondary-action" onClick={resetRaceClock}>Reset Clock</button>
-            </div>}
-          </div>
-
-          {fastestRunner && fastestResult && (
-            <div className="race-best-strip">
-              <span>Fastest today</span>
-              <strong>{runnerName(fastestRunner)}</strong>
-              <em>{formatRaceTime(fastestResult.finishSeconds)}</em>
-            </div>
-          )}
-
-          {checkedInClients.length ? (
-            <div className="race-runner-grid">
-              {checkedInClients.map((runner) => {
-                const result = resultByRunnerId.get(runner.id);
-                const draftValue = draftTimes[runner.id] ?? (result ? formatRaceTime(result.finishSeconds) : "");
-                const isSaved = Boolean(result && !editingTimes[runner.id]);
-                return (
-                  <article key={runner.id} className={result ? "race-runner-card finished" : "race-runner-card"}>
-                    <button className="race-runner-main" onClick={() => onOpenProfile(runner.id)}>
-                      <Avatar runner={runner} />
-                      <span>
-                        <strong>{runnerName(runner)}</strong>
-                        <small>{result ? `Finished ${formatRaceTime(result.finishSeconds)}` : "Waiting for finish"}</small>
-                      </span>
-                    </button>
-                    {!viewOnly && <><button
-                      className={result ? "finish-button saved" : "finish-button"}
-                      disabled={!elapsedSeconds || pendingTimes[runner.id]}
-                      onClick={() => saveManualTime(runner.id, formatRaceTime(elapsedSeconds))}
-                    >
-                      {result ? "Update Finish" : "Finish"}
-                    </button>
-                    <div className="manual-time-entry">
-                      <input
-                        value={draftValue}
-                        disabled={pendingTimes[runner.id]}
-                        readOnly={isSaved}
-                        onChange={(event) => {
-                          setDraftTimes((current) => ({ ...current, [runner.id]: formatRaceTimeInput(event.target.value) }));
-                          setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
-                        }}
-                        placeholder="MM:SS"
-                        inputMode="numeric"
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && !isSaved && !pendingTimes[runner.id]) {
-                            event.preventDefault();
-                            void saveManualTime(runner.id, draftValue);
-                          }
-                        }}
-                        aria-label={`Manual finish time for ${runnerName(runner)}`}
-                      />
-                      <button className="secondary-action" disabled={pendingTimes[runner.id] || isSaved || !draftValue} onClick={() => saveManualTime(runner.id, draftValue)}>
-                        {pendingTimes[runner.id] ? "Please wait..." : isSaved ? "Saved" : "Save"}
-                      </button>
-                      {timeErrors[runner.id] && <small role="alert" className="time-error">{timeErrors[runner.id]}</small>}
-                    </div>
-                    <div className="race-time-actions">
-                      {isSaved && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={(event) => {
-                        setEditingTimes((current) => ({ ...current, [runner.id]: true }));
-                        const input = event.currentTarget.closest("article")?.querySelector("input");
-                        input?.focus();
-                        input?.select();
-                      }}>Edit</button>}
-                      {(result || draftValue) && <button className="secondary-action" disabled={pendingTimes[runner.id]} onClick={() => {
-                        if (result) {
-                          void deleteTime(result, runnerName(runner));
-                        } else {
-                          setDraftTimes((current) => ({ ...current, [runner.id]: "" }));
-                          setTimeErrors((current) => ({ ...current, [runner.id]: "" }));
-                        }
-                      }}>Clear</button>}
-                    </div></>}
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <strong>No checked-in CityTeam runners yet</strong>
-              <span>Check in race attendees first, then return here to record finish times.</span>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="empty-state">
-          <strong>No saved race yet</strong>
-          <span>Create or check in a run first, then use Race Timer for finish times.</span>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -4669,7 +4393,7 @@ function SettingsSection() {
           <code>supabase-profile-fields.sql</code>.
         </p>
         <p>
-          Race Timer finish times use the <code>race_results</code> table and the server-only{" "}
+          Saved race results use the <code>race_results</code> table and the server-only{" "}
           <code>SUPABASE_SERVICE_ROLE_KEY</code> so race results are not written directly from the browser.
         </p>
         <p>
