@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { useViewOnly } from "./access-context";
 import { googleCalendarSyncEnabled } from "../lib/calendar-sync";
 
+import { shoeEligibility } from "../lib/shoe-eligibility";
+
 type RunnerStatus = "active" | "inactive_left_program" | "inactive_working";
 type LegacyRunnerStatus = RunnerStatus | "inactive" | "exited";
 type PersonType = "cityteam_client" | "volunteer";
@@ -29,6 +31,7 @@ type Runner = {
   oldTshirtSize?: string;
   shirtReceivedDate?: string;
   dateFirstJoined?: string;
+  fiveKCompletedDate?: string;
   demoShoesReceivedDate?: string;
   newShoesReceivedDate?: string;
 };
@@ -112,6 +115,7 @@ type SupabaseRunnerRow = {
   old_tshirt_size: string | null;
   shirt_received_date: string | null;
   date_first_joined?: string | null;
+  five_k_completed_date?: string | null;
   demo_shoes_received_date?: string | null;
   new_shoes_received_date?: string | null;
 };
@@ -738,6 +742,7 @@ function fromRunnerRow(row: SupabaseRunnerRow): Runner {
     oldTshirtSize: row.old_tshirt_size ?? undefined,
     shirtReceivedDate: row.shirt_received_date ?? undefined,
     dateFirstJoined: row.date_first_joined ?? undefined,
+    fiveKCompletedDate: row.five_k_completed_date ?? undefined,
     demoShoesReceivedDate: row.demo_shoes_received_date ?? undefined,
     newShoesReceivedDate: row.new_shoes_received_date ?? undefined,
   };
@@ -763,6 +768,7 @@ function toRunnerRow(runner: Runner): SupabaseRunnerRow {
     old_tshirt_size: runner.oldTshirtSize || null,
     shirt_received_date: runner.shirtReceivedDate || null,
     date_first_joined: runner.dateFirstJoined || null,
+    five_k_completed_date: runner.fiveKCompletedDate || null,
     demo_shoes_received_date: runner.demoShoesReceivedDate || null,
     new_shoes_received_date: runner.newShoesReceivedDate || null,
   };
@@ -1367,7 +1373,7 @@ export default function Home() {
       const streakAfter = currentRunStreak(nextState, runner.id, runs);
       const messages = [
         totalRunsBefore < 2 && totalRunsAfter >= 2 ? "T-shirt earned on this check-in." : "",
-        totalRunsBefore < 4 && totalRunsAfter >= 4 ? "New shoes earned on this check-in." : "",
+        !shoeEligibility(state, runner).earned && shoeEligibility(nextState, runner).earned ? "New shoes earned on this check-in." : "",
         streakAfter > 1 && streakAfter > bestStreakBefore ? `New record streak: ${streakAfter} runs in a row.` : "",
       ].filter(Boolean);
 
@@ -2221,6 +2227,7 @@ function profileDraftFromRunner(runner?: Runner) {
     shirtReceivedDate: runner?.shirtReceivedDate ?? "",
     demoShoesReceivedDate: runner?.demoShoesReceivedDate ?? "",
     newShoesReceivedDate: runner?.newShoesReceivedDate ?? "",
+    fiveKCompletedDate: runner?.fiveKCompletedDate ?? "",
   };
 }
 
@@ -2238,6 +2245,7 @@ function profileCardKey(runner?: Runner, isMobileOpen = false) {
     runner.shirtReceivedDate ?? "",
     runner.demoShoesReceivedDate ?? "",
     runner.newShoesReceivedDate ?? "",
+    runner.fiveKCompletedDate ?? "",
     isMobileOpen ? "open" : "closed",
   ].join("|");
 }
@@ -2301,6 +2309,7 @@ function ProfileCard({
     ? Math.round((recentAttendances / recentRunTrend.length) * 100)
     : 0;
   const totalRunsAttended = countAttendance(state, runner.id);
+  const shoes = shoeEligibility(state, runner);
   const automaticFirstJoinedDate = firstJoinedDate(state, runner.id) ?? runner.dateFirstJoined;
   const canEarnNewShoes = (isEditingProfile ? profileDraft.personType : runner.personType) === "cityteam_client";
   const profileRaceResults = runnerRaceResults(state, runner.id);
@@ -2439,6 +2448,13 @@ function ProfileCard({
                 )}
               </label>
               <label>
+                <span>5K completed</span>
+                {isEditingProfile ? <input type="date" value={profileDraft.fiveKCompletedDate}
+                  max={todayDate()} onChange={(event) => setProfileDraft(current => ({ ...current, fiveKCompletedDate: event.target.value }))} />
+                  : <strong className="read-only-field">{shoes.raceDate ? formatShortDate(shoes.raceDate) : "Not recorded"}</strong>}
+              </label>
+              <p className="wide-field">{shoes.newRule ? "Joined November 28, 2026 or later: six runs and a completed 5K race earn new shoes." : "Joined before November 28, 2026: four runs earn new shoes."}</p>
+              <label>
                 <span>New shoes received</span>
                 {isEditingProfile ? (
                   <input
@@ -2454,8 +2470,8 @@ function ProfileCard({
               </label>
               <label>
                 <span>Shoe milestone</span>
-                <strong className={totalRunsAttended >= 4 ? "read-only-field earned-field" : "read-only-field"}>
-                  {totalRunsAttended >= 4 ? "New Shoes earned" : `${Math.max(4 - totalRunsAttended, 0)} runs to earn new shoes`}
+                <strong className={shoes.earned ? "read-only-field earned-field" : "read-only-field"}>
+                  {state.detailsLoading ? "Loading eligibility…" : shoes.label}
                 </strong>
               </label>
             </>
@@ -2528,6 +2544,7 @@ function ProfileCard({
                   setIsSavingProfile(true);
                   setProfileError("");
                   try {
+                    if (profileDraft.fiveKCompletedDate > todayDate()) throw new Error("5K completion cannot be in the future.");
                     const email = profileDraft.email.trim();
                     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
                     await onSaveProfile(runner.id, {
@@ -2543,6 +2560,7 @@ function ProfileCard({
                       dateFirstJoined: automaticFirstJoinedDate ?? "",
                       demoShoesReceivedDate: profileDraft.demoShoesReceivedDate,
                       newShoesReceivedDate: profileDraft.newShoesReceivedDate,
+                      fiveKCompletedDate: profileDraft.fiveKCompletedDate,
                     });
                     setIsEditingProfile(false);
                   } catch (error) {
@@ -3153,7 +3171,7 @@ function RunDayCelebrationSection({
     .slice(0, 5);
   const latestClientAttendees = cityTeamClients.filter((runner) => latestAttendeeIds.has(runner.id));
   const shoeEarners = latestRun
-    ? latestClientAttendees.filter((runner) => attendanceCountThroughRun(state, runner.id, latestRun.id, runs) === 4)
+    ? latestClientAttendees.filter((runner) => shoeEligibility(state, runner).earnedOn === latestRun.date)
     : [];
   const shirtEarners = latestRun
     ? latestClientAttendees.filter((runner) => attendanceCountThroughRun(state, runner.id, latestRun.id, runs) === 2)
@@ -3219,14 +3237,14 @@ function RunDayCelebrationSection({
 
         <CelebrationList
           title="Shoes Earned"
-          subtitle={`${clientScopeLabel} whose fourth run was the latest run.`}
+          subtitle={`${clientScopeLabel} who completed their shoe requirements on the latest run.`}
           empty="No new shoe milestones on the latest run."
         >
           {shoeEarners.map((runner) => (
             <CelebrationPersonRow
               key={runner.id}
               runner={runner}
-              detail="Fourth run milestone"
+              detail="New shoe requirements completed"
               metric="Shoes"
               onOpenProfile={onOpenProfile}
             />
@@ -3678,14 +3696,15 @@ function AttendanceLeaderboard({
             </button>
           </div>
           <span className="shirt-key"><span aria-hidden="true">👕</span> Second run earns T-shirt</span>
-          <span className="shoe-key"><span aria-hidden="true">✨👟</span> Fourth run earns new shoes</span>
+          <span className="shoe-key"><span aria-hidden="true">✨👟</span> New shoes: four runs for earlier joiners; six runs + a 5K for joiners from Nov 28, 2026</span>
         </div>
       </div>
       {leaders.length ? (
         <div className="leaderboard-list">
           {leaders.map(({ runner, runsAttended }, index) => {
             const earnedShirt = runsAttended >= 2;
-            const earnedShoes = runsAttended >= 4;
+            const shoes = shoeEligibility(state, runner);
+            const earnedShoes = !state.detailsLoading && shoes.earned;
             const receivedShirt = Boolean(runner.shirtReceivedDate);
             const receivedShoes = Boolean(runner.newShoesReceivedDate);
             const shoeRuns = Array.from({ length: runsAttended }, (_, runIndex) => runIndex + 1);
@@ -3709,27 +3728,28 @@ function AttendanceLeaderboard({
                     {runnerName(runner)}
                   </button>
                   <small>{statusLabels[normalizeRunnerStatus(runner.status)]} CityTeam Client</small>
+                  <small>{state.detailsLoading ? "Loading eligibility…" : shoes.label}</small>
                   <div className="shoe-run-chart" aria-label={`${runnerName(runner)} has attended ${runsAttended} runs`}>
                     {shoeRuns.map((runNumber) => (
                       <span
                         key={runNumber}
-                        className={runNumber === 4 ? "shoe-run earned" : runNumber === 2 ? "shoe-run shirt-earned" : "shoe-run"}
+                        className={earnedShoes && runNumber === shoes.earnedAtRun ? "shoe-run earned" : runNumber === 2 ? "shoe-run shirt-earned" : "shoe-run"}
                         title={
-                          runNumber === 4
-                            ? "Fourth run: New shoes earned"
+                          earnedShoes && runNumber === shoes.earnedAtRun
+                            ? "New shoes earned: requirements complete"
                             : runNumber === 2
                               ? "Second run: T-shirt earned"
                               : `Run ${runNumber}`
                         }
                         aria-label={
-                          runNumber === 4
-                            ? "Fourth run: New shoes earned"
+                          earnedShoes && runNumber === shoes.earnedAtRun
+                            ? "New shoes earned: requirements complete"
                             : runNumber === 2
                               ? "Second run: T-shirt earned"
                               : `Run ${runNumber}`
                         }
                       >
-                        <span aria-hidden="true">{runNumber === 4 ? "✨👟" : runNumber === 2 ? "👕" : "👟"}</span>
+                        <span aria-hidden="true">{earnedShoes && runNumber === shoes.earnedAtRun ? "✨👟" : runNumber === 2 ? "👕" : "👟"}</span>
                       </span>
                     ))}
                   </div>
